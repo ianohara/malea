@@ -1,3 +1,7 @@
+# Project tooling ignores
+.build/
+
+# Cmake related ignores
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
