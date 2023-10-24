@@ -1,6 +1,7 @@
 #ifndef NETWORK_HPP
 #define NETWORK_HPP
 
+#include <memory>
 #include <tuple>
 #include <vector>
 
@@ -16,12 +17,12 @@ namespace Vs {
 
     class ActivationFunction {
     public:
-        virtual FVal Apply(FVal in);
-        virtual BVal Derivative(FVal in);
+        virtual FVal Apply(FVal in) = 0;
+        virtual BVal Derivative(FVal in) = 0;
     private:
     };
 
-    class ReLu : public ActivationFunction {
+    class _ReLuImpl : public ActivationFunction {
     public:
         FVal Apply(FVal in) override {
             return in <= 0.0 ? 0.0 : in;
@@ -32,7 +33,7 @@ namespace Vs {
         }
     };
 
-    class PassThrough : public ActivationFunction {
+    class _PassThroughImpl : public ActivationFunction {
     public:
         FVal Apply(FVal in) override {
             return in;
@@ -43,31 +44,51 @@ namespace Vs {
         }
     };
 
+    static auto ReLu = std::make_shared<_ReLuImpl>();
+    static auto PassThrough = std::make_shared<_PassThroughImpl>();
+
     class Network {
     public:
-        Network(size_t input_size) : weights(input_size, input_size), connections(input_size, input_size), layer_nodes { std::make_pair(0, input_size - 1) }, activation_functions { PassThrough() } {}
+        Network(size_t input_size) : weights(input_size, input_size), connections(input_size, input_size), layer_nodes { std::make_pair(0, input_size - 1) }, activation_functions { PassThrough } {}
 
-        void AddLayer(size_t nodes, ActivationFunction fn);
+        void AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn);
 
         // Adds a layer that is fully connected to the previously added layer.
-        void AddFullyConnectedLayer(size_t nodes, ActivationFunction fn);
+        void AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn);
 
-        size_t GetNodeCount() {
-            return layer_nodes.back().second;
+        inline size_t GetNodeCount() {
+            // Nodes are 0 indexed, and layer_nodes has inclusive pairs, so the count is + 1
+            return layer_nodes.back().second + 1;
         }
 
-        size_t GetLayerNodeCount(size_t layer_idx) {
+        inline size_t GetLayerNodeCount(size_t layer_idx) {
             auto [from, to] = layer_nodes[layer_idx];
             return to - from + 1;
         }
 
-        FVal GetWeightForConnection(size_t from, size_t to) {
+        inline FVal GetWeightForConnection(size_t from, size_t to) {
             return weights(from, to);
+        }
+
+        inline void SetWeightForConnection(size_t from_idx, size_t to_idx, WVal weight) {
+            weights(from_idx, to_idx) = weight;
+        }
+
+        inline bool GetAreConnected(size_t from_idx, size_t to_idx) {
+            return connections(from_idx, to_idx);
+        }
+
+        inline void SetConnected(size_t from_idx, size_t to_idx, bool connected) {
+            connections(from_idx, to_idx) = connected;
         }
 
         IOVector Apply(IOVector input);
 
         GradVector WeightGradient(IOVector input, IOVector output);
+
+        inline void SetUnityWeights() {
+            weights.fill(1);
+        }
 
     private:
         // Each row represents the "from" node, and each column represents the "to" node.  So
@@ -88,16 +109,14 @@ namespace Vs {
         std::vector<std::pair<size_t, size_t>> layer_nodes;
 
         // For each layer, the activation function used for its nodes.
-        std::vector<ActivationFunction> activation_functions;
+        std::vector<std::shared_ptr<ActivationFunction>> activation_functions;
 
         // The scratch pad for keeping track of the forward evaluation values of nodes.  This is only
         // valid for a particular input vector, and really shouldn't be used outside of Apply and
         // WeightGradient
         std::vector<FVal> node_output_values;
 
-        void ResizeForAdditionalNodes(size_t new_nodes);
-
-        void ResizeForNodeCount(size_t node_count);
+        void ResizeForNodeCount(size_t old_node_count, size_t new_node_count);
 
         FVal ApplyNode(size_t node_idx, FVal input);
     };
