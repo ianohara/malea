@@ -60,3 +60,21 @@ TEST(Network, TwoNodePassThroughLayers) {
     input << 1, 1;
     ASSERT_NEAR(n.Apply(input).sum(), 32, NetEps);
 }
+
+TEST(Network, BigHonkerReLu) {
+    const size_t honkin_size = 250;
+    Vs::Network n(honkin_size);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    n.SetAllWeightsTo(1.0 / honkin_size); // So each layer adds up to the previous output
+
+    Vs::IOVector input(honkin_size);
+    input.fill(123.0);
+
+    ASSERT_NEAR(n.Apply(input).sum(), honkin_size * 123.0, NetEps);
+}

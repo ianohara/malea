@@ -115,8 +115,12 @@ namespace Vs {
 
         GradVector WeightGradient(IOVector input, IOVector output);
 
+        inline void SetAllWeightsTo(WVal weight) {
+            weights.fill(weight);
+        }
+
         inline void SetUnityWeights() {
-            weights.fill(1);
+            SetAllWeightsTo(1.0);
         }
 
     private:
