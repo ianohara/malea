@@ -9,14 +9,11 @@ namespace Vs {
         layer_nodes.emplace_back(from_end + 1, from_end + nodes);
         auto[to_start, to_end] = layer_nodes.back();
 
-        // TODO(imo: remove std::cout << "Just added (to_start, to_end)=(" << to_start << ", " << to_end << ") and (from_start, from_end)=(" << from_start << "," << from_end << ")" << std::endl;
-
         activation_functions.push_back(fn);
         auto old_node_count = from_end + 1;
         auto new_node_count = to_end + 1;
 
         ResizeForNodeCount(old_node_count, new_node_count);
-        // TODO(imo: remove std::cout << "  GetNodeCount now=" << GetNodeCount() << std::endl;
     }
 
     void Network::AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
@@ -26,14 +23,12 @@ namespace Vs {
 
         for (size_t m = from_start; m <= from_end; m++) {
             for (size_t n = to_start; n <= to_end; n++) {
-                // TODO(imo): remove std::cout << "Adding connection from " << m << " to " << n << std::endl;
                 SetConnected(m, n, true);
             }
         }
     }
 
     void Network::ResizeForNodeCount(size_t old_count, size_t new_count) {
-        // TODO(imo: remove std::cout << "old_count=" << old_count << " new_count=" << new_count << std::endl;
         auto new_first_index = old_count;
         auto added_nodes = new_count - old_count;
 
@@ -59,31 +54,20 @@ namespace Vs {
             node_output_values[n] = val;
         }
 
-        //std::cout << "in Apply, connections=" << std::endl << connections << std::endl;
-
         for (size_t n = GetLayerNodeCount(0); n < GetNodeCount(); n++) {
             FVal accumulated_input = 0.0;
             auto incoming_nodes = connections.col(n);
-            // TODO(imo: remove std::cout << "for n=" << n << " incoming_nodes=" << std::endl << incoming_nodes << std::endl;
             // TODO(imo): change to sparse and use nonZeros
             for (size_t in_idx = 0; in_idx < incoming_nodes.rows(); in_idx++) {
 
                 if (!incoming_nodes(in_idx)) {
-                    // TODO(imo: remove std::cout << "    No connection, skipping" << std::endl;
                     continue;
                 }
-                //std::cout << "in_idx -> n : " << in_idx << " -> " << n << std::endl;
                 auto weight = GetWeightForConnection(in_idx, n);
                 accumulated_input += weight * node_output_values[in_idx];
-                //std::cout << "    weight * node_output_values[in_idx] = " << weight * node_output_values[in_idx] << std::endl;
-                // TODO(imo: removestd::cout << "    accumulated_input = " << accumulated_input << std::endl;
             }
 
             node_output_values[n] = ApplyNode(n, accumulated_input);
-            //for (auto v : node_output_values)
-            //    std::cout << v << " ";
-            //std::cout << std::endl;
-            //std::cout << "node_output_values[" << n << "] = " << node_output_values[n] << std::endl;
         }
 
         auto[out_from, out_to] = layer_nodes.back();
