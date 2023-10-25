@@ -9,14 +9,14 @@ namespace Vs {
         layer_nodes.emplace_back(from_end + 1, from_end + nodes);
         auto[to_start, to_end] = layer_nodes.back();
 
-        std::cout << "Just added (to_start, to_end)=(" << to_start << ", " << to_end << ") and (from_start, from_end)=(" << from_start << "," << from_end << ")" << std::endl;
+        // TODO(imo: remove std::cout << "Just added (to_start, to_end)=(" << to_start << ", " << to_end << ") and (from_start, from_end)=(" << from_start << "," << from_end << ")" << std::endl;
 
         activation_functions.push_back(fn);
         auto old_node_count = from_end + 1;
         auto new_node_count = to_end + 1;
 
         ResizeForNodeCount(old_node_count, new_node_count);
-        std::cout << "  GetNodeCount now=" << GetNodeCount() << std::endl;
+        // TODO(imo: remove std::cout << "  GetNodeCount now=" << GetNodeCount() << std::endl;
     }
 
     void Network::AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
@@ -33,7 +33,7 @@ namespace Vs {
     }
 
     void Network::ResizeForNodeCount(size_t old_count, size_t new_count) {
-        std::cout << "old_count=" << old_count << " new_count=" << new_count << std::endl;
+        // TODO(imo: remove std::cout << "old_count=" << old_count << " new_count=" << new_count << std::endl;
         auto new_first_index = old_count;
         auto added_nodes = new_count - old_count;
 
@@ -59,28 +59,31 @@ namespace Vs {
             node_output_values[n] = val;
         }
 
-        std::cout << "in Apply, connections=" << std::endl << connections << std::endl;
+        //std::cout << "in Apply, connections=" << std::endl << connections << std::endl;
 
         for (size_t n = GetLayerNodeCount(0); n < GetNodeCount(); n++) {
             FVal accumulated_input = 0.0;
             auto incoming_nodes = connections.col(n);
-            std::cout << "for n=" << n << " incoming_nodes=" << std::endl << incoming_nodes << std::endl;
+            // TODO(imo: remove std::cout << "for n=" << n << " incoming_nodes=" << std::endl << incoming_nodes << std::endl;
             // TODO(imo): change to sparse and use nonZeros
             for (size_t in_idx = 0; in_idx < incoming_nodes.rows(); in_idx++) {
-                std::cout << "in_idx -> n : " << in_idx << " -> " << n << std::endl;
+
                 if (!incoming_nodes(in_idx)) {
-                    std::cout << "    No connection, skipping" << std::endl;
+                    // TODO(imo: remove std::cout << "    No connection, skipping" << std::endl;
                     continue;
                 }
-
+                //std::cout << "in_idx -> n : " << in_idx << " -> " << n << std::endl;
                 auto weight = GetWeightForConnection(in_idx, n);
                 accumulated_input += weight * node_output_values[in_idx];
-                std::cout << "    weight * node_output_values[in_idx] = " << weight * node_output_values[in_idx] << std::endl;
-                std::cout << "    accumulated_input = " << accumulated_input << std::endl;
+                //std::cout << "    weight * node_output_values[in_idx] = " << weight * node_output_values[in_idx] << std::endl;
+                // TODO(imo: removestd::cout << "    accumulated_input = " << accumulated_input << std::endl;
             }
 
             node_output_values[n] = ApplyNode(n, accumulated_input);
-            std::cout << "node_output_values[" << n << "] = " << node_output_values[n] << std::endl;
+            //for (auto v : node_output_values)
+            //    std::cout << v << " ";
+            //std::cout << std::endl;
+            //std::cout << "node_output_values[" << n << "] = " << node_output_values[n] << std::endl;
         }
 
         auto[out_from, out_to] = layer_nodes.back();
@@ -95,6 +98,8 @@ namespace Vs {
     }
 
     FVal Network::ApplyNode(size_t node_idx, FVal input) {
-        return activation_functions[node_idx]->Apply(input);
+        auto layer_idx = GetLayerForNode(node_idx);
+        auto fn = activation_functions[layer_idx];
+        return fn->Apply(input);
     }
 }

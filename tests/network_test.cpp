@@ -42,4 +42,21 @@ TEST(Network, SingleNodeReLuLayers)
     input << -1.0;
 
     ASSERT_NEAR(n.Apply(input).sum(), 0, NetEps);
+
+    input << 2.0;
+    ASSERT_NEAR(n.Apply(input).sum(), 2.0, NetEps);
+}
+
+TEST(Network, TwoNodePassThroughLayers) {
+    Vs::Network n(2);
+    n.AddFullyConnectedLayer(2, Vs::PassThrough);
+    n.AddFullyConnectedLayer(2, Vs::PassThrough);
+    n.AddFullyConnectedLayer(2, Vs::PassThrough);
+    n.AddFullyConnectedLayer(2, Vs::PassThrough);
+    n.SetUnityWeights();
+
+    Vs::IOVector input(2);
+
+    input << 1, 1;
+    ASSERT_NEAR(n.Apply(input).sum(), 32, NetEps);
 }

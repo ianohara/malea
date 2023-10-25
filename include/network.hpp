@@ -4,6 +4,8 @@
 #include <memory>
 #include <tuple>
 #include <vector>
+#include <iostream>
+#include <string>
 
 #include "Eigen/Core"
 
@@ -19,6 +21,7 @@ namespace Vs {
     public:
         virtual FVal Apply(FVal in) = 0;
         virtual BVal Derivative(FVal in) = 0;
+        virtual std::string Describe() = 0;
     private:
     };
 
@@ -31,6 +34,10 @@ namespace Vs {
         BVal Derivative(FVal in) override {
             return in <= 0.0 ? 0.0 : 1.0;
         }
+
+        std::string Describe() override {
+            return "ReLu";
+        }
     };
 
     class _PassThroughImpl : public ActivationFunction {
@@ -42,6 +49,10 @@ namespace Vs {
         BVal Derivative(FVal in) override {
             return 0.0;
         }
+
+        std::string Describe() override {
+            return "PassThrough";
+        }
     };
 
     static auto ReLu = std::make_shared<_ReLuImpl>();
@@ -49,12 +60,26 @@ namespace Vs {
 
     class Network {
     public:
-        Network(size_t input_size) : weights(input_size, input_size), connections(input_size, input_size), layer_nodes { std::make_pair(0, input_size - 1) }, activation_functions { PassThrough } {}
+        Network(size_t input_size) : weights(input_size, input_size), connections(input_size, input_size), layer_nodes { std::make_pair(0, input_size - 1) }, activation_functions { PassThrough } {
+            weights.fill(0.0);
+            connections.fill(0.0);
+        }
 
         void AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn);
 
         // Adds a layer that is fully connected to the previously added layer.
         void AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn);
+
+        inline size_t GetLayerForNode(size_t node_idx) {
+            for (size_t layer_idx = 0; layer_idx < layer_nodes.size(); layer_idx++) {
+                auto layer_pair = layer_nodes[layer_idx];
+                if (node_idx >= layer_pair.first && node_idx <= layer_pair.second) {
+                    return layer_idx;
+                }
+            }
+
+            throw;
+        }
 
         inline size_t GetNodeCount() {
             // Nodes are 0 indexed, and layer_nodes has inclusive pairs, so the count is + 1
@@ -80,6 +105,10 @@ namespace Vs {
 
         inline void SetConnected(size_t from_idx, size_t to_idx, bool connected) {
             connections(from_idx, to_idx) = connected;
+        }
+
+        inline size_t GetLayerCount() {
+            return layer_nodes.size();
         }
 
         IOVector Apply(IOVector input);
