@@ -55,6 +55,29 @@ namespace Vs {
         }
     };
 
+    class ObjectiveFunction {
+    public:
+        virtual FVal Apply(IOVector final_layer_output, IOVector expected_output) = 0;
+        virtual BVal Derivative(IOVector final_layer_output, IOVector expected_output) = 0;
+        virtual std::string Describe() = 0;
+    };
+
+    class _SumOfSquares : ObjectiveFunction {
+    public:
+        FVal Apply(IOVector final_layer_output, IOVector expected_output) override {
+            auto differences = expected_output - final_layer_output;
+            return differences.squaredNorm();
+        }
+
+        // This is the derivative of the ObjectiveFunction with respect to each of the final layer
+        // outputs.  Since the expected outputs are constant, this is just the sum of the elements of
+        // 2*(expected-final_layer)
+        BVal Derivative(IOVector final_layer_output, IOVector expected_output) override {
+            auto differences = 2.0 * (expected_output - final_layer_output);
+            return differences.sum();
+        }
+    };
+
     static auto ReLu = std::make_shared<_ReLuImpl>();
     static auto PassThrough = std::make_shared<_PassThroughImpl>();
 
@@ -79,6 +102,38 @@ namespace Vs {
             }
 
             throw;
+        }
+
+        inline std::vector<size_t> GetNodesForLayer(size_t layer_idx) {
+            auto[start_idx, end_idx] = layer_nodes[layer_idx];
+            std::vector<size_t> ids;
+            for (auto id = start_idx; id <= end_idx; id++) {
+                ids.push_back(id);
+            }
+
+            return ids;
+        }
+
+        inline std::vector<size_t> GetIncomingNodesFor(size_t node_idx) {
+            std::vector<size_t> ids;
+            for (size_t row_idx = 0; row_idx < connections.rows(); row_idx++) {
+                if (connections(row_idx, node_idx)) {
+                    ids.push_back(row_idx);
+                }
+            }
+
+            return ids;
+        }
+
+        inline std::vector<size_t> GetOutgoingNodesFor(size_t node_idx) {
+            std::vector<size_t> ids;
+            for (size_t col_idx = 0; col_idx < connections.cols(); col_idx++) {
+                if (connections(node_idx, col_idx)) {
+                    ids.push_back(col_idx);
+                }
+            }
+
+            return ids;
         }
 
         inline size_t GetNodeCount() {
@@ -113,7 +168,7 @@ namespace Vs {
 
         IOVector Apply(IOVector input);
 
-        GradVector WeightGradient(IOVector input, IOVector output);
+        GradVector WeightGradient(IOVector input, IOVector output, std::shared_ptr<ObjectiveFunction> objective_fn);
 
         inline void SetAllWeightsTo(WVal weight) {
             weights.fill(weight);
@@ -148,6 +203,10 @@ namespace Vs {
         // valid for a particular input vector, and really shouldn't be used outside of Apply and
         // WeightGradient
         std::vector<FVal> node_output_values;
+
+        // The scratch pad for keeping track of the derivative of a loss function with respect to a
+        // node's input for each node as the backpropagation process is carried out.
+        std::vector<BVal> del_objective_del_node_input;
 
         void ResizeForNodeCount(size_t old_node_count, size_t new_node_count);
 
