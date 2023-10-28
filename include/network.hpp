@@ -22,7 +22,6 @@ namespace Vs {
         virtual FVal Apply(FVal in) = 0;
         virtual BVal Derivative(FVal in) = 0;
         virtual std::string Describe() = 0;
-    private:
     };
 
     class _ReLuImpl : public ActivationFunction {
@@ -36,7 +35,7 @@ namespace Vs {
         }
 
         std::string Describe() override {
-            return "ReLu";
+            return "ReLuActivation";
         }
     };
 
@@ -51,7 +50,7 @@ namespace Vs {
         }
 
         std::string Describe() override {
-            return "PassThrough";
+            return "PassThroughActivation";
         }
     };
 
@@ -62,7 +61,7 @@ namespace Vs {
         virtual std::string Describe() = 0;
     };
 
-    class _SumOfSquares : ObjectiveFunction {
+    class _SumOfSquares : public ObjectiveFunction {
     public:
         FVal Apply(IOVector final_layer_output, IOVector expected_output) override {
             auto differences = expected_output - final_layer_output;
@@ -76,7 +75,13 @@ namespace Vs {
             auto differences = 2.0 * (expected_output - final_layer_output);
             return differences.sum();
         }
+
+        std::string Describe() override {
+            return "SumOfSquaresObjective";
+        }
     };
+
+    static auto SumOfSquaresObjective = std::make_shared<_SumOfSquares>();
 
     static auto ReLu = std::make_shared<_ReLuImpl>();
     static auto PassThrough = std::make_shared<_PassThroughImpl>();
