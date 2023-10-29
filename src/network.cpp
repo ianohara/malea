@@ -75,11 +75,7 @@ namespace Vs {
         size_t out_len = out_to - out_from + 1;
         IOVector out_vec(out_len);
 
-        for (size_t idx = 0; idx < out_len; idx++) {
-            out_vec(idx) = node_output_values[out_from + idx];
-        }
-
-        return out_vec;
+        return node_output_values;
     }
 
     FVal Network::ApplyNode(size_t node_idx, FVal input) {
@@ -93,7 +89,8 @@ namespace Vs {
         // Instead, we use node_output_values which keeps track of the outputs of all the nodes (whereas
         // Apply just returns the output vector of the last layer).  We do use applied_output for evaluation
         // of the ObjectiveFunction, though.
-        IOVector applied_output = Apply(input);
+        IOVector node_outputs = Apply(input);
+        IOVector applied_output = OutputVectorFromNodeOutputs(node_output_values);
 
         // To calculate the gradient with respect to the weights, work backward
         // from the objective function in reverse node order.  For each node,
@@ -171,9 +168,9 @@ namespace Vs {
         for (auto end_node_idx : GetNodesForLayer(last_layer_idx)) {
             del_objective_del_node_input[end_node_idx]
                 = objective_fn->Derivative(applied_output, expected_output)
-                    * activation_functions[last_layer_idx]->Derivative(node_output_values[end_node_idx]);
+                    * activation_functions[last_layer_idx]->Derivative(node_outputs[end_node_idx]);
             for (auto incoming_node_idx : GetIncomingNodesFor(end_node_idx)) {
-                weight_gradient(incoming_node_idx, end_node_idx) = node_output_values[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx) * del_objective_del_node_input[end_node_idx];
+                weight_gradient(incoming_node_idx, end_node_idx) = node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx) * del_objective_del_node_input[end_node_idx];
             }
         }
 
@@ -185,10 +182,10 @@ namespace Vs {
                 }
 
                 del_objective_del_node_input[current_node]
-                    = activation_functions[layer_id]->Derivative(node_output_values[current_node]) * outgoing_deriv_sum;
+                    = activation_functions[layer_id]->Derivative(node_outputs[current_node]) * outgoing_deriv_sum;
 
                 for (auto incoming_node_idx : GetIncomingNodesFor(current_node)) {
-                    weight_gradient(incoming_node_idx, current_node) = node_output_values[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, current_node) * del_objective_del_node_input[current_node];
+                    weight_gradient(incoming_node_idx, current_node) = node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, current_node) * del_objective_del_node_input[current_node];
                 }
             }
         }

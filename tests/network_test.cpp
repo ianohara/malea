@@ -27,7 +27,8 @@ TEST(Network, SingleNodePassThroughLayers)
     Vs::IOVector input(1);
     input << 101.1;
 
-    ASSERT_NEAR(n.Apply(input).sum(), 101.1, NetEps);
+    auto node_outputs = n.Apply(input);
+    ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 101.1, NetEps);
 }
 
 TEST(Network, SingleNodeReLuLayers)
@@ -41,10 +42,12 @@ TEST(Network, SingleNodeReLuLayers)
     Vs::IOVector input(1);
     input << -1.0;
 
-    ASSERT_NEAR(n.Apply(input).sum(), 0, NetEps);
+    auto node_outputs = n.Apply(input);
+    ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 0, NetEps);
 
     input << 2.0;
-    ASSERT_NEAR(n.Apply(input).sum(), 2.0, NetEps);
+    node_outputs = n.Apply(input);
+    ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 2.0, NetEps);
 }
 
 TEST(Network, TwoNodePassThroughLayers) {
@@ -58,7 +61,8 @@ TEST(Network, TwoNodePassThroughLayers) {
     Vs::IOVector input(2);
 
     input << 1, 1;
-    ASSERT_NEAR(n.Apply(input).sum(), 32, NetEps);
+    auto node_outputs = n.Apply(input);
+    ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 32, NetEps);
 }
 
 TEST(Network, BigHonkerReLu) {
@@ -76,7 +80,8 @@ TEST(Network, BigHonkerReLu) {
     Vs::IOVector input(honkin_size);
     input.fill(123.0);
 
-    ASSERT_NEAR(n.Apply(input).sum(), honkin_size * 123.0, NetEps);
+    auto node_outputs = n.Apply(input);
+    ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), honkin_size * 123.0, NetEps);
 }
 
 TEST(Network, GradientSingleNodeLayers) {
@@ -126,4 +131,36 @@ TEST(Network, GradientBigHonkin) {
 
     // Just make sure it runs!
     auto out = n.WeightGradient(input, 0.1*input, Vs::SumOfSquaresObjective);
+}
+
+TEST(Network, GradientHandCalcChecks) {
+    Vs::Network n(1);
+    n.AddFullyConnectedLayer(2, Vs::ArgCubed);
+    n.AddFullyConnectedLayer(2, Vs::ArgCubed);
+    n.AddFullyConnectedLayer(2, Vs::ArgCubed);
+    n.SetUnityWeights();
+
+    Vs::IOVector input(1);
+    input << 1.0;
+    Vs::IOVector output(2);
+    output << 2.0, 3.0;
+
+    auto node_outputs = n.Apply(input);
+    auto gradient = n.WeightGradient(input, output, Vs::SumOfSquaresObjective);
+
+    auto i_5 = n.GetWeightForConnection(3, 5) * node_outputs[3] + n.GetWeightForConnection(4, 5) * node_outputs[4];
+    auto i_6 = n.GetWeightForConnection(3, 6) * node_outputs[3] + n.GetWeightForConnection(4, 6) * node_outputs[4];
+    auto i_3 = n.GetWeightForConnection(1, 3) * node_outputs[1] + n.GetWeightForConnection(2, 3) * node_outputs[2];
+    auto del_E_del_w_35 = -2.0 * (output[0] - node_outputs[5]) * 3.0 * i_5 * i_5 * node_outputs[3];
+
+    auto del_E_del_w_13 = -2.0 * (output[0] - node_outputs[5]) * 3.0 * i_5 * i_5 * (n.GetWeightForConnection(3, 5) * 3.0 * i_3 * i_3 * node_outputs[1])
+        - 2.0 * (output[1] - node_outputs[6])*(3.0 * i_6 * i_6) * (n.GetWeightForConnection(3, 6) * 3.0 * i_3 * i_3 * node_outputs[1]);
+
+    auto index_for = [=](int row, int col) { return row * n.GetNodeCount() + col; };
+
+    std::cout << gradient << std::endl;
+
+    ASSERT_NEAR(gradient(index_for(1, 3)), del_E_del_w_13, NetEps);
+    ASSERT_NEAR(gradient(index_for(3, 5)), del_E_del_w_35, NetEps);
+
 }

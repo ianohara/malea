@@ -54,6 +54,21 @@ namespace Vs {
         }
     };
 
+    class _ArgCubedImpl : public ActivationFunction {
+    public:
+        FVal Apply(FVal in) override {
+            return std::pow(in, 3);
+        }
+
+        BVal Derivative(FVal in) override {
+            return 3.0 * std::pow(in * in, 2);
+        }
+
+        std::string Describe() override {
+            return "ArgCubedActivation";
+        }
+    };
+
     class ObjectiveFunction {
     public:
         virtual FVal Apply(IOVector final_layer_output, IOVector expected_output) = 0;
@@ -85,6 +100,7 @@ namespace Vs {
 
     static auto ReLu = std::make_shared<_ReLuImpl>();
     static auto PassThrough = std::make_shared<_PassThroughImpl>();
+    static auto ArgCubed = std::make_shared<_ArgCubedImpl>();  // Used for testing
 
     class Network {
     public:
@@ -141,7 +157,7 @@ namespace Vs {
             return ids;
         }
 
-        inline size_t GetNodeCount() {
+        inline size_t GetNodeCount() const {
             // Nodes are 0 indexed, and layer_nodes has inclusive pairs, so the count is + 1
             return layer_nodes.back().second + 1;
         }
@@ -183,6 +199,16 @@ namespace Vs {
             SetAllWeightsTo(1.0);
         }
 
+        IOVector OutputVectorFromNodeOutputs(IOVector apply_output) {
+            auto last_layer_nodes = GetNodesForLayer(GetLayerCount() - 1);
+            IOVector output(last_layer_nodes.size());
+            for (size_t idx = 0; idx < last_layer_nodes.size(); idx++) {
+                output(idx) = apply_output(last_layer_nodes[idx]);
+            }
+
+            return output;
+        }
+
     private:
         // Each row represents the "from" node, and each column represents the "to" node.  So
         // entry [i][j] is the weight for the connection from node i to node j in the network.
@@ -207,7 +233,8 @@ namespace Vs {
         // The scratch pad for keeping track of the forward evaluation values of nodes.  This is only
         // valid for a particular input vector, and really shouldn't be used outside of Apply and
         // WeightGradient
-        std::vector<FVal> node_output_values;
+        // TODO(imo): Get rid of this
+        IOVector node_output_values;
 
         // The scratch pad for keeping track of the derivative of a loss function with respect to a
         // node's input for each node as the backpropagation process is carried out.
