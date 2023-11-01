@@ -10,6 +10,8 @@
 #include "Eigen/Core"
 
 namespace Vs {
+    static const bool Debug = false;
+
     typedef double FVal;
     typedef double BVal;
     typedef double WVal;
@@ -61,7 +63,7 @@ namespace Vs {
         }
 
         BVal Derivative(FVal in) override {
-            return 3.0 * std::pow(in * in, 2);
+            return 3.0 * std::pow(in, 2);
         }
 
         std::string Describe() override {
@@ -72,7 +74,7 @@ namespace Vs {
     class ObjectiveFunction {
     public:
         virtual FVal Apply(IOVector final_layer_output, IOVector expected_output) = 0;
-        virtual BVal Derivative(IOVector final_layer_output, IOVector expected_output) = 0;
+        virtual BVal Derivative(IOVector final_layer_output, IOVector expected_output, size_t final_layer_idx) = 0;
         virtual std::string Describe() = 0;
     };
 
@@ -84,11 +86,11 @@ namespace Vs {
         }
 
         // This is the derivative of the ObjectiveFunction with respect to each of the final layer
-        // outputs.  Since the expected outputs are constant, this is just the sum of the elements of
-        // 2*(expected-final_layer)
-        BVal Derivative(IOVector final_layer_output, IOVector expected_output) override {
-            auto differences = 2.0 * (expected_output - final_layer_output);
-            return differences.sum();
+        // outputs.  Since the expected outputs and outputs are constant, this is just the sum of the elements of
+        // 2*(expected-final_layer) * -1 since the derivative of the argument wrt the final layer outputs is -1
+        BVal Derivative(IOVector final_layer_output, IOVector expected_output, size_t final_layer_idx) override {
+            auto differences = -2.0 * (expected_output - final_layer_output);
+            return differences(final_layer_idx);
         }
 
         std::string Describe() override {

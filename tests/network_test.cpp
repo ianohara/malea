@@ -141,9 +141,9 @@ TEST(Network, GradientHandCalcChecks) {
     n.SetUnityWeights();
 
     Vs::IOVector input(1);
-    input << 1.0;
+    input << 1;
     Vs::IOVector output(2);
-    output << 2.0, 3.0;
+    output << 0, 0;
 
     auto node_outputs = n.Apply(input);
     auto gradient = n.WeightGradient(input, output, Vs::SumOfSquaresObjective);
@@ -158,9 +158,8 @@ TEST(Network, GradientHandCalcChecks) {
 
     auto index_for = [=](int row, int col) { return row * n.GetNodeCount() + col; };
 
-    std::cout << gradient << std::endl;
+    std::cout << gradient.transpose() << std::endl;
 
-    ASSERT_NEAR(gradient(index_for(1, 3)), del_E_del_w_13, NetEps);
     ASSERT_NEAR(gradient(index_for(3, 5)), del_E_del_w_35, NetEps);
-
+    ASSERT_NEAR(gradient(index_for(1, 3)), del_E_del_w_13, NetEps);
 }

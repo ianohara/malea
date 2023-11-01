@@ -162,15 +162,35 @@ namespace Vs {
         // TODO(imo): Remove this zeroing; it is just for debug.
         std::fill(del_objective_del_node_input.begin(), del_objective_del_node_input.end(), 0.0);
 
+        auto vec_string = [](IOVector vec) { return vec.transpose(); };
+
         // In the last layer, we special case for the derivative of the objective function wrt
         // its input arg (versus just the activation function).
         auto last_layer_idx = GetLayerCount() - 1;
+        int idx_in_last_layer = -1;
         for (auto end_node_idx : GetNodesForLayer(last_layer_idx)) {
-            del_objective_del_node_input[end_node_idx]
-                = objective_fn->Derivative(applied_output, expected_output)
-                    * activation_functions[last_layer_idx]->Derivative(node_outputs[end_node_idx]);
+            idx_in_last_layer++;
+            FVal incoming_weighted_sum = 0.0;
             for (auto incoming_node_idx : GetIncomingNodesFor(end_node_idx)) {
-                weight_gradient(incoming_node_idx, end_node_idx) = node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx) * del_objective_del_node_input[end_node_idx];
+                incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx);
+            }
+
+            del_objective_del_node_input[end_node_idx]
+                = objective_fn->Derivative(applied_output, expected_output, idx_in_last_layer)
+                    * activation_functions[last_layer_idx]->Derivative(incoming_weighted_sum);
+            for (auto incoming_node_idx : GetIncomingNodesFor(end_node_idx)) {
+                // weight_gradient(incoming_node_idx, end_node_idx) = node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx) * del_objective_del_node_input[end_node_idx];
+                weight_gradient(incoming_node_idx, end_node_idx) = node_outputs[incoming_node_idx] * del_objective_del_node_input[end_node_idx];
+            }
+            if (Vs::Debug) {
+                std::cout << "For end node " << end_node_idx << std::endl
+                    << "   objective_fn derivative" << std::endl
+                    << "     applied_output " << vec_string(applied_output) << std::endl
+                    << "     expected_output " << vec_string(expected_output) << std::endl
+                    << "     derivative " << objective_fn->Derivative(applied_output, expected_output, idx_in_last_layer) << std::endl
+                    << "   incoming_weighted_sum " << incoming_weighted_sum << std::endl
+                    << "   activation_functions[last_layer_idx]->Derivative(incoming_weighted_sum) " << activation_functions[last_layer_idx]->Derivative(incoming_weighted_sum) << std::endl
+                    << "   del_objective_del_node_input " << del_objective_del_node_input[end_node_idx] << std::endl;
             }
         }
 
@@ -181,11 +201,36 @@ namespace Vs {
                     outgoing_deriv_sum += GetWeightForConnection(current_node, outgoing_node_idx) * del_objective_del_node_input[outgoing_node_idx];
                 }
 
+                if (Vs::Debug) {
+                    std::cout << "For node " << current_node << " outoing_deriv_sum " << outgoing_deriv_sum << std::endl;
+                }
+                FVal incoming_weighted_sum = 0.0;
+                for (auto incoming_node_idx : GetIncomingNodesFor(current_node)) {
+                    incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, current_node);
+                }
+
                 del_objective_del_node_input[current_node]
-                    = activation_functions[layer_id]->Derivative(node_outputs[current_node]) * outgoing_deriv_sum;
+                    = activation_functions[layer_id]->Derivative(incoming_weighted_sum) * outgoing_deriv_sum;
 
                 for (auto incoming_node_idx : GetIncomingNodesFor(current_node)) {
-                    weight_gradient(incoming_node_idx, current_node) = node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, current_node) * del_objective_del_node_input[current_node];
+                    weight_gradient(incoming_node_idx, current_node) = node_outputs[incoming_node_idx] * del_objective_del_node_input[current_node];
+                }
+            }
+        }
+
+        for (auto node_idx = 0; node_idx < GetNodeCount(); node_idx++) {
+            FVal incoming_weighted_sum = 0.0;
+            for (auto incoming_node_idx : GetIncomingNodesFor(node_idx)) {
+                incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, node_idx);
+            }
+
+            if (Vs::Debug) {
+                std::cout << "For node " << node_idx << std::endl
+                    << "  del_objective_del_node_input " << del_objective_del_node_input[node_idx] << std::endl
+                    << "  node_outputs " << node_outputs[node_idx] << std::endl
+                    << "  incoming_weighted_sum " << incoming_weighted_sum << std::endl;
+                for (auto incoming_idx : GetIncomingNodesFor(node_idx)) {
+                    std::cout << "  weight " << incoming_idx << "->" << node_idx << " " << GetWeightForConnection(incoming_idx, node_idx) << std::endl;
                 }
             }
         }
