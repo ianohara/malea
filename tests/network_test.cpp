@@ -2,6 +2,9 @@
 
 #include "network.hpp"
 
+#include <cstdlib>
+#include <tuple>
+
 static constexpr Vs::FVal NetEps = 0.0001;
 
 TEST(Network, Create)
@@ -18,7 +21,7 @@ TEST(Network, FullyConnected)
 
 TEST(Network, SingleNodePassThroughLayers)
 {
-     Vs::Network n(1);
+    Vs::Network n(1);
     n.AddFullyConnectedLayer(1, Vs::PassThrough);
     n.AddFullyConnectedLayer(1, Vs::PassThrough);
     n.AddFullyConnectedLayer(1, Vs::PassThrough);
@@ -50,7 +53,8 @@ TEST(Network, SingleNodeReLuLayers)
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 2.0, NetEps);
 }
 
-TEST(Network, TwoNodePassThroughLayers) {
+TEST(Network, TwoNodePassThroughLayers)
+{
     Vs::Network n(2);
     n.AddFullyConnectedLayer(2, Vs::PassThrough);
     n.AddFullyConnectedLayer(2, Vs::PassThrough);
@@ -65,7 +69,8 @@ TEST(Network, TwoNodePassThroughLayers) {
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 32, NetEps);
 }
 
-TEST(Network, BigHonkerReLu) {
+TEST(Network, BigHonkerReLu)
+{
     const size_t honkin_size = 250;
     Vs::Network n(honkin_size);
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
@@ -84,11 +89,13 @@ TEST(Network, BigHonkerReLu) {
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), honkin_size * 123.0, NetEps);
 }
 
-TEST(Network, GradientSingleNodeLayers) {
+TEST(Network, GradientSingleNodeLayers)
+{
     const size_t num_layers = 4;
     Vs::Network n(1);
 
-    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++) {
+    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++)
+    {
         n.AddFullyConnectedLayer(1, Vs::ReLu);
     }
     n.SetUnityWeights();
@@ -99,11 +106,13 @@ TEST(Network, GradientSingleNodeLayers) {
     auto out = n.WeightGradient(input, input, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientMultipleNodeMultipleLayer) {
+TEST(Network, GradientMultipleNodeMultipleLayer)
+{
     const size_t num_layers = 4;
     Vs::Network n(3);
 
-    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++) {
+    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++)
+    {
         n.AddFullyConnectedLayer(3, Vs::ReLu);
     }
     n.SetUnityWeights();
@@ -112,10 +121,11 @@ TEST(Network, GradientMultipleNodeMultipleLayer) {
     input.fill(0.5);
 
     // Just make sure it runs!
-    auto out = n.WeightGradient(input, 2*input, Vs::SumOfSquaresObjective);
+    auto out = n.WeightGradient(input, 2 * input, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientBigHonkin) {
+TEST(Network, GradientBigHonkin)
+{
     const size_t honkin_size = 250;
     Vs::Network n(honkin_size);
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
@@ -130,36 +140,54 @@ TEST(Network, GradientBigHonkin) {
     input.fill(1);
 
     // Just make sure it runs!
-    auto out = n.WeightGradient(input, 0.1*input, Vs::SumOfSquaresObjective);
+    auto out = n.WeightGradient(input, 0.1 * input, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientHandCalcChecks) {
+TEST(Network, GradientHandCalcChecks)
+{
     Vs::Network n(1);
     n.AddFullyConnectedLayer(2, Vs::ArgCubed);
     n.AddFullyConnectedLayer(2, Vs::ArgCubed);
     n.AddFullyConnectedLayer(2, Vs::ArgCubed);
+
+    auto calc_dels = [&n](Vs::IOVector &actual_outputs, Vs::IOVector &expected_outputs)
+    {
+        auto i_5 = n.GetWeightForConnection(3, 5) * actual_outputs[3] + n.GetWeightForConnection(4, 5) * actual_outputs[4];
+        auto i_6 = n.GetWeightForConnection(3, 6) * actual_outputs[3] + n.GetWeightForConnection(4, 6) * actual_outputs[4];
+        auto i_3 = n.GetWeightForConnection(1, 3) * actual_outputs[1] + n.GetWeightForConnection(2, 3) * actual_outputs[2];
+        Vs::FVal del_E_del_w_35 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 * actual_outputs[3];
+        Vs::FVal del_E_del_w_13 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 * (n.GetWeightForConnection(3, 5) * 3.0 * i_3 * i_3 * actual_outputs[1])
+            - 2.0 * (expected_outputs[1] - actual_outputs[6]) * (3.0 * i_6 * i_6) * (n.GetWeightForConnection(3, 6) * 3.0 * i_3 * i_3 * actual_outputs[1]);
+
+        return std::make_pair(del_E_del_w_13, del_E_del_w_35);
+    };
+
+    auto test = [&n, &calc_dels](Vs::FVal in0, Vs::FVal out0, Vs::FVal out1)
+    {
+        Vs::IOVector input(1);
+        input << in0;
+        Vs::IOVector output(2);
+        output << out0, out1;
+
+        auto node_outputs = n.Apply(input);
+        auto gradient = n.WeightGradient(input, output, Vs::SumOfSquaresObjective);
+
+        auto [del_E_del_w_13, del_E_del_w_35] = calc_dels(node_outputs, output);
+
+        auto index_for = [&n](int row, int col) { return row * n.GetNodeCount() + col; };
+        ASSERT_NEAR(gradient(index_for(3, 5)), del_E_del_w_35, NetEps);
+        ASSERT_NEAR(gradient(index_for(1, 3)), del_E_del_w_13, NetEps);
+    };
+
     n.SetUnityWeights();
+    test(1, 0, 0);
+    test(0, 0, 0);
+    test(0.1, 0.2, 0.2);
 
-    Vs::IOVector input(1);
-    input << 1;
-    Vs::IOVector output(2);
-    output << 0, 0;
+    auto rand_weights = [](size_t row, size_t col) {
+        return (std::rand() / static_cast<Vs::WVal>(RAND_MAX)) - 1.0;
+    };
+    n.SetWeightsWith(rand_weights);
 
-    auto node_outputs = n.Apply(input);
-    auto gradient = n.WeightGradient(input, output, Vs::SumOfSquaresObjective);
-
-    auto i_5 = n.GetWeightForConnection(3, 5) * node_outputs[3] + n.GetWeightForConnection(4, 5) * node_outputs[4];
-    auto i_6 = n.GetWeightForConnection(3, 6) * node_outputs[3] + n.GetWeightForConnection(4, 6) * node_outputs[4];
-    auto i_3 = n.GetWeightForConnection(1, 3) * node_outputs[1] + n.GetWeightForConnection(2, 3) * node_outputs[2];
-    auto del_E_del_w_35 = -2.0 * (output[0] - node_outputs[5]) * 3.0 * i_5 * i_5 * node_outputs[3];
-
-    auto del_E_del_w_13 = -2.0 * (output[0] - node_outputs[5]) * 3.0 * i_5 * i_5 * (n.GetWeightForConnection(3, 5) * 3.0 * i_3 * i_3 * node_outputs[1])
-        - 2.0 * (output[1] - node_outputs[6])*(3.0 * i_6 * i_6) * (n.GetWeightForConnection(3, 6) * 3.0 * i_3 * i_3 * node_outputs[1]);
-
-    auto index_for = [=](int row, int col) { return row * n.GetNodeCount() + col; };
-
-    std::cout << gradient.transpose() << std::endl;
-
-    ASSERT_NEAR(gradient(index_for(3, 5)), del_E_del_w_35, NetEps);
-    ASSERT_NEAR(gradient(index_for(1, 3)), del_E_del_w_13, NetEps);
+    test(1, 0, 0);
 }

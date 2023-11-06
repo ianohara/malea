@@ -10,7 +10,7 @@
 #include "Eigen/Core"
 
 namespace Vs {
-    static const bool Debug = false;
+    static constexpr bool Debug = false;
 
     typedef double FVal;
     typedef double BVal;
@@ -199,6 +199,16 @@ namespace Vs {
 
         inline void SetUnityWeights() {
             SetAllWeightsTo(1.0);
+        }
+
+        inline void SetWeightsWith(std::function<WVal(size_t, size_t)> weight_setter) {
+            for (size_t row = 0; row < connections.rows(); row++) {
+                for (size_t col = 0; col < connections.cols(); col++) {
+                    if (connections(row, col)) {
+                        weights(row, col) = weight_setter(row, col);
+                    }
+                }
+            }
         }
 
         IOVector OutputVectorFromNodeOutputs(IOVector apply_output) {
