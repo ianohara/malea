@@ -21,19 +21,19 @@ namespace Vs {
 
     class ActivationFunction {
     public:
-        virtual FVal Apply(FVal in) = 0;
-        virtual BVal Derivative(FVal in) = 0;
+        virtual FVal Apply(size_t node_idx, const IOVector& node_inputs) = 0;
+        virtual BVal Derivative(size_t node_idx, const IOVector& node_inputs) = 0;
         virtual std::string Describe() = 0;
     };
 
     class _ReLuImpl : public ActivationFunction {
     public:
-        FVal Apply(FVal in) override {
-            return in <= 0.0 ? 0.0 : in;
+        FVal Apply(size_t node_idx, const IOVector& node_inputs) override {
+            return node_inputs(node_idx) <= 0.0 ? 0.0 : node_inputs(node_idx);
         }
 
-        BVal Derivative(FVal in) override {
-            return in <= 0.0 ? 0.0 : 1.0;
+        BVal Derivative(size_t node_idx, const IOVector& node_inputs) override {
+            return node_inputs(node_idx) <= 0.0 ? 0.0 : 1.0;
         }
 
         std::string Describe() override {
@@ -43,11 +43,11 @@ namespace Vs {
 
     class _PassThroughImpl : public ActivationFunction {
     public:
-        FVal Apply(FVal in) override {
-            return in;
+        FVal Apply(size_t node_idx, const IOVector& node_inputs) override {
+            return node_inputs(node_idx);
         }
 
-        BVal Derivative(FVal in) override {
+        BVal Derivative(size_t node_idx, const IOVector& node_inputs) override {
             return 0.0;
         }
 
@@ -58,12 +58,12 @@ namespace Vs {
 
     class _ArgCubedImpl : public ActivationFunction {
     public:
-        FVal Apply(FVal in) override {
-            return std::pow(in, 3);
+        FVal Apply(size_t node_idx, const IOVector& node_inputs) override {
+            return std::pow(node_inputs(node_idx), 3);
         }
 
-        BVal Derivative(FVal in) override {
-            return 3.0 * std::pow(in, 2);
+        BVal Derivative(size_t node_idx, const IOVector& node_inputs) override {
+            return 3.0 * std::pow(node_inputs(node_idx), 2);
         }
 
         std::string Describe() override {
