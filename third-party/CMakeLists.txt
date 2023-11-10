@@ -34,3 +34,20 @@ FetchContent_Declare(CxxOpts
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(CxxOpts)
+
+## CImg, a header only image library for loading/writing images
+FetchContent_Declare(CImg
+    GIT_REPOSITORY https://github.com/GreycLab/CImg.git
+    GIT_TAG v.221
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+)
+FetchContent_GetProperties(CImg)
+if(NOT cimg_POPULATED)
+    message("Populating CImg!")
+    FetchContent_Populate(CImg)
+endif()
+
+add_library(CImg INTERFACE)
+message("Adding ${cimg_SOURCE_DIR} to CImg INTERFACE")
+target_include_directories(CImg INTERFACE ${cimg_SOURCE_DIR})

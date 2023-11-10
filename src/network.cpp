@@ -3,7 +3,12 @@
 #include <iostream>
 
 namespace Vs {
-    void Network::AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
+    size_t Network::AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
+        // NOTE(imo): This assert is just a protection against using this in the
+        // constructor for layer 0 at some point in the future.  Biases would be
+        // broken by doing so.
+        assert(layer_nodes.size() >= 1);
+
         auto[from_start, from_end] = layer_nodes.back();
 
         layer_nodes.emplace_back(from_end + 1, from_end + nodes);
@@ -13,12 +18,18 @@ namespace Vs {
         auto old_node_count = from_end + 1;
         auto new_node_count = to_end + 1;
 
+        // If you want a layer without a bias, call DeleteBias after AddLayer
+        size_t new_layer_idx = layer_nodes.size() - 1;
+        biases[new_layer_idx] = 0.0;
+
         ResizeForNodeCount(old_node_count, new_node_count);
+
+        return new_layer_idx;
     }
 
-    void Network::AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
+    size_t Network::AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
         auto[from_start, from_end] = layer_nodes.back();
-        AddLayer(nodes, fn);
+        const size_t new_layer_idx = AddLayer(nodes, fn);
         auto[to_start, to_end] = layer_nodes.back();
 
         for (size_t m = from_start; m <= from_end; m++) {
@@ -26,22 +37,49 @@ namespace Vs {
                 SetConnected(m, n, true);
             }
         }
+
+        HeInitialize(new_layer_idx);
+
+        return new_layer_idx;
+    }
+
+    size_t Network::AddSoftMaxLayer() {
+        auto[from_start, from_end] = layer_nodes.back();
+        const size_t new_layer_idx = AddLayer(from_end - from_start + 1, Vs::SoftMax);
+        DeleteBias(new_layer_idx);
+        auto [to_start, to_end] = layer_nodes.back();
+
+        assert((from_end - from_start) == (to_end - to_start));
+        size_t from = from_start;
+        size_t to = to_start;
+        while (from <= from_end) {
+            SetConnected(from, to, true);
+            SetNotOptimizedUnityConnection(from, to);
+            from++;
+            to++;
+        }
+
+        return new_layer_idx;
+    }
+
+    void Network::HeInitialize(size_t layer_idx) {
+        for (size_t node_idx : GetNodesForLayer(layer_idx)) {
+            const double incoming_count = GetIncomingNodesFor(node_idx).size();
+            for (size_t incoming_idx : GetIncomingNodesFor(node_idx)) {
+                double standard_dev = std::sqrt(2.0 / incoming_count);
+                SetWeightForConnection(incoming_idx, node_idx, Vs::Util::RandInGaussian(0.0, standard_dev));
+            }
+        }
     }
 
     void Network::ResizeForNodeCount(size_t old_count, size_t new_count) {
-        auto new_first_index = old_count;
-        auto added_nodes = new_count - old_count;
+        size_t new_first_index = old_count;
+        size_t last_new_index = new_count - 1;
 
-        // Make sure to preserve the existing values, and set the new to zero in both
-        // connections and weights.  node_output_values doesn't need the same
-        // treatment because it's just a scratch pad that is overwritten
-        connections.conservativeResize(new_count, new_count);
-        connections.block(new_first_index, 0, added_nodes, new_count).fill(0);
-        connections.block(0, new_first_index, new_count, added_nodes).fill(0);
-
-        weights.conservativeResize(new_count, new_count);
-        weights.block(new_first_index, 0, added_nodes, new_count).fill(0);
-        weights.block(0, new_first_index, new_count, added_nodes).fill(0);
+        for (size_t new_idx = new_first_index; new_idx <= last_new_index; new_idx++) {
+            weights[new_idx] = {};
+            connections[new_idx] = {};
+        }
 
         node_output_values.resize(new_count);
         del_objective_del_node_input.resize(new_count);
@@ -50,38 +88,31 @@ namespace Vs {
     IOVector Network::Apply(IOVector input) {
         assert(input.rows() == GetLayerNodeCount(0));
 
-        for (size_t n = 0; n < GetLayerNodeCount(0); n++) {
-            FVal val = ApplyNode(n, input[n]);
-            node_output_values[n] = val;
-        }
-
-        for (size_t n = GetLayerNodeCount(0); n < GetNodeCount(); n++) {
-            FVal accumulated_input = 0.0;
-            auto incoming_nodes = connections.col(n);
-            // TODO(imo): change to sparse and use nonZeros
-            for (size_t in_idx = 0; in_idx < incoming_nodes.rows(); in_idx++) {
-
-                if (!incoming_nodes(in_idx)) {
-                    continue;
-                }
-                auto weight = GetWeightForConnection(in_idx, n);
-                accumulated_input += weight * node_output_values[in_idx];
+        for (size_t layer_idx = 0; layer_idx < GetLayerCount(); layer_idx++) {
+            IOVector layer_inputs = layer_idx == 0 ? input : GetLayerInputs(layer_idx);
+            for (size_t node_idx : GetNodesForLayer(layer_idx)) {
+                auto node_output_value = ApplyNode(node_idx, layer_inputs);
+                node_output_values[node_idx] = node_output_value;
             }
-
-            node_output_values[n] = ApplyNode(n, accumulated_input);
         }
-
-        auto[out_from, out_to] = layer_nodes.back();
-        size_t out_len = out_to - out_from + 1;
-        IOVector out_vec(out_len);
 
         return node_output_values;
     }
 
-    FVal Network::ApplyNode(size_t node_idx, FVal input) {
+    FVal Network::ApplyNode(size_t node_idx, const IOVector& node_values) {
         auto layer_idx = GetLayerForNode(node_idx);
+        auto layer_node_idx = GlobalNodeToLayerNode(node_idx);
         auto fn = activation_functions[layer_idx];
-        return fn->Apply(input);
+        auto apply_value = fn->Apply(layer_node_idx, node_values);
+        if (Vs::Debug) {
+            std::cout << "Applying Node " << node_idx << ":" << std::endl
+                << "  layer=" << layer_idx << std::endl
+                << "  global=" << node_idx << "(layer_node=" << layer_node_idx << ")" << std::endl
+                << "  node_values=" << node_values.transpose() << std::endl
+                << "  apply_value=" << apply_value << std::endl;
+        }
+        assert(!std::isnan(apply_value));
+        return apply_value;
     }
 
     GradVector Network::WeightGradient(IOVector input, IOVector expected_output, std::shared_ptr<ObjectiveFunction> objective_fn) {
@@ -136,7 +167,7 @@ namespace Vs {
         //    For each node in the last layer, del(O) / del(w_ji) is just:
         //      del(O) / del(o_l) * del(o_l) / del(i_l) * w_ji
         //    For each node in the l-1 layer, calculate del(o_l-1i) / del(i_l-1i)
-        //      (the rate of change of the node with respect to the node's input)
+        //      (the rate of change of the node output with respect to the node's input)
         //    and then:
         //      del(O) / del(w_ji) = sum(w_ji * del(O)/del(i_i))
         //    So we want to store the del(O)/del(i_i) values so that each i-1 layer
@@ -155,9 +186,13 @@ namespace Vs {
         //
         // TODO(imo): Seems like this might end up being expensive and will need to be moved
         // somewhere that isn't reallocated.
-        auto weight_gradient = Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic>();
-        weight_gradient.resizeLike(weights);
+        auto weight_gradient = Eigen::Matrix<BVal, Eigen::Dynamic, 1>(GetOptimizedWeightCount());
+        auto connection_to_weight_idx = GetConnectionToWeightParamIdx();
         weight_gradient.fill(0);
+
+        auto bias_gradient = Eigen::Matrix<BVal, Eigen::Dynamic, 1>();
+        bias_gradient.resize(biases.size());
+        bias_gradient.fill(0);
 
         // TODO(imo): Remove this zeroing; it is just for debug.
         std::fill(del_objective_del_node_input.begin(), del_objective_del_node_input.end(), 0.0);
@@ -166,78 +201,105 @@ namespace Vs {
 
         // In the last layer, we special case for the derivative of the objective function wrt
         // its input arg (versus just the activation function).
-        auto last_layer_idx = GetLayerCount() - 1;
-        int idx_in_last_layer = -1;
-        for (auto end_node_idx : GetNodesForLayer(last_layer_idx)) {
-            idx_in_last_layer++;
-            FVal incoming_weighted_sum = 0.0;
-            for (auto incoming_node_idx : GetIncomingNodesFor(end_node_idx)) {
-                incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx);
+        const size_t last_layer_idx = GetLayerCount() - 1;
+
+        // Not all layers have biases, so we need a counter to keep track of where in the bias gradient we are.  We
+        // start from the last bias.
+        size_t current_bias_gradient_idx = biases.size() - 1;
+
+        // NOTE(imo): Layer 0 doesn't have any weights associated with it, so we can skip it and only
+        //   go down to layer 1.
+        for (int layer_id = last_layer_idx; layer_id >= 1; layer_id--) {
+            IOVector layer_inputs = GetLayerInputs(layer_id);
+            BVal bias_grad_accum = 0;
+
+            // Jacobian of activations is: N x N where N is the number of nodes in the current layer_id layer
+            const Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> activation_jacobian = activation_functions[layer_id]->Jacobian(layer_inputs);
+
+            IOVector previous_layer_derivs(activation_jacobian.cols());
+            if (layer_id == last_layer_idx) {
+                previous_layer_derivs = objective_fn->Gradient(applied_output, expected_output);
+            } else {
+                for (auto current_node : GetNodesForLayer(layer_id)) {
+                    const size_t node_idx_in_layer = GlobalNodeToLayerNode(current_node);
+                    BVal outgoing_deriv_sum = 0.0;
+                    for (auto outgoing_node_idx : GetOutgoingNodesFor(current_node)) {
+                        outgoing_deriv_sum += GetWeightForConnection(current_node, outgoing_node_idx) * del_objective_del_node_input[outgoing_node_idx];
+                    }
+                    previous_layer_derivs(node_idx_in_layer) = outgoing_deriv_sum;
+                }
             }
 
-            del_objective_del_node_input[end_node_idx]
-                = objective_fn->Derivative(applied_output, expected_output, idx_in_last_layer)
-                    * activation_functions[last_layer_idx]->Derivative(incoming_weighted_sum);
-            for (auto incoming_node_idx : GetIncomingNodesFor(end_node_idx)) {
-                // weight_gradient(incoming_node_idx, end_node_idx) = node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, end_node_idx) * del_objective_del_node_input[end_node_idx];
-                weight_gradient(incoming_node_idx, end_node_idx) = node_outputs[incoming_node_idx] * del_objective_del_node_input[end_node_idx];
-            }
-            if (Vs::Debug) {
-                std::cout << "For end node " << end_node_idx << std::endl
-                    << "   objective_fn derivative" << std::endl
-                    << "     applied_output " << vec_string(applied_output) << std::endl
-                    << "     expected_output " << vec_string(expected_output) << std::endl
-                    << "     derivative " << objective_fn->Derivative(applied_output, expected_output, idx_in_last_layer) << std::endl
-                    << "   incoming_weighted_sum " << incoming_weighted_sum << std::endl
-                    << "   activation_functions[last_layer_idx]->Derivative(incoming_weighted_sum) " << activation_functions[last_layer_idx]->Derivative(incoming_weighted_sum) << std::endl
-                    << "   del_objective_del_node_input " << del_objective_del_node_input[end_node_idx] << std::endl;
-            }
-        }
+            const IOVector this_layer_derivs = activation_jacobian * previous_layer_derivs;
 
-        for (int layer_id = last_layer_idx - 1; layer_id >= 0; layer_id--) {
+            // std::cout << "For  layer " << layer_id << ":" << std::endl
+            //     << "activation_jacobian   : " << std::endl << activation_jacobian << std::endl
+            //     << "previous_layer_derivs : " << std::endl << previous_layer_derivs << std::endl
+            //     << "this_layer_derivs     : " << std::endl << this_layer_derivs << std::endl << std::endl;
+
+            if (biases.count(layer_id)) {
+                // For biases, the "incoming" node value is 1 since it looks like a connection from a node with constant output and weight == bias.
+                // So the gradient is just the sum of the derivatives of all the nodes it is connected to (all this layer's nodes)
+                bias_gradient(current_bias_gradient_idx--) = this_layer_derivs.sum();
+            }
+
             for (auto current_node : GetNodesForLayer(layer_id)) {
-                BVal outgoing_deriv_sum = 0.0;
-                for (auto outgoing_node_idx : GetOutgoingNodesFor(current_node)) {
-                    outgoing_deriv_sum += GetWeightForConnection(current_node, outgoing_node_idx) * del_objective_del_node_input[outgoing_node_idx];
-                }
+                const size_t node_idx_in_layer = GlobalNodeToLayerNode(current_node);
+                // Subsequent layers (earlier in the network) need to know the derivative of the objective wrt each node in this layer, so record
+                // those values here.
+                del_objective_del_node_input[current_node] = this_layer_derivs[node_idx_in_layer];
 
-                if (Vs::Debug) {
-                    std::cout << "For node " << current_node << " outoing_deriv_sum " << outgoing_deriv_sum << std::endl;
-                }
-                FVal incoming_weighted_sum = 0.0;
+                // Each incoming connection has a weight associated with it, so fill in the weight_gradients for those edges since the rest of the partial
+                // derivates have been calculated up to this point.
                 for (auto incoming_node_idx : GetIncomingNodesFor(current_node)) {
-                    incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, current_node);
-                }
-
-                del_objective_del_node_input[current_node]
-                    = activation_functions[layer_id]->Derivative(incoming_weighted_sum) * outgoing_deriv_sum;
-
-                for (auto incoming_node_idx : GetIncomingNodesFor(current_node)) {
-                    weight_gradient(incoming_node_idx, current_node) = node_outputs[incoming_node_idx] * del_objective_del_node_input[current_node];
+                    const bool this_is_optimized = IsOptimizedWeightConnection(incoming_node_idx, current_node);
+                    if (this_is_optimized) {
+                        size_t weight_gradient_idx = connection_to_weight_idx[incoming_node_idx][current_node];
+                        auto this_node_input = node_outputs[incoming_node_idx];
+                        auto this_node_deriv = this_layer_derivs(node_idx_in_layer);
+                        weight_gradient(weight_gradient_idx) =  this_node_input * this_node_deriv;
+                    }
                 }
             }
         }
 
-        for (auto node_idx = 0; node_idx < GetNodeCount(); node_idx++) {
-            FVal incoming_weighted_sum = 0.0;
-            for (auto incoming_node_idx : GetIncomingNodesFor(node_idx)) {
-                incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, node_idx);
-            }
+        Eigen::Matrix<BVal, Eigen::Dynamic, 1> gradient(weight_gradient.rows() + bias_gradient.rows());
+        gradient << weight_gradient, bias_gradient;
 
-            if (Vs::Debug) {
-                std::cout << "For node " << node_idx << std::endl
-                    << "  del_objective_del_node_input " << del_objective_del_node_input[node_idx] << std::endl
-                    << "  node_outputs " << node_outputs[node_idx] << std::endl
-                    << "  incoming_weighted_sum " << incoming_weighted_sum << std::endl;
-                for (auto incoming_idx : GetIncomingNodesFor(node_idx)) {
-                    std::cout << "  weight " << incoming_idx << "->" << node_idx << " " << GetWeightForConnection(incoming_idx, node_idx) << std::endl;
-                }
-            }
+        return gradient;
+    }
+
+    Vs::GradVector CalculateNumericalGradient(const std::shared_ptr<Vs::Network> network, const Vs::IOVector &input, const Vs::IOVector &expected_output, const std::shared_ptr<Vs::ObjectiveFunction> objective_fn, const double param_step_size) {
+        assert(param_step_size > 0);
+        const Vs::IOVector starting_params = network->GetOptimizedParams();
+        // For each parameter dimension, the change in objective function associated with a small step of param_step_size in that dimension.  The step is done centered on the current location.
+        // Aka: -param_step_size/2 to param_step_size/2
+        Vs::IOVector param_delta(starting_params.size());
+
+        auto set_one_coeff = [&starting_params](size_t coeff_idx, double val) {
+            Vs::IOVector zeros_except_one(starting_params.size());
+            zeros_except_one.fill(0);
+            zeros_except_one(coeff_idx) = val;
+
+            Vs::IOVector result = starting_params + zeros_except_one;
+            return result;
+        };
+
+        for (size_t dim_idx = 0; dim_idx < starting_params.rows(); dim_idx++) {
+            const Vs::IOVector from_params = set_one_coeff(dim_idx, -param_step_size);
+            const Vs::IOVector to_params = set_one_coeff(dim_idx, param_step_size);
+
+            network->SetOptimizedParams(from_params);
+            const double from_obj_val = objective_fn->Apply(network->OutputVectorFromNodeOutputs(network->Apply(input)), expected_output);
+            network->SetOptimizedParams(to_params);
+            const double to_obj_val = objective_fn->Apply(network->OutputVectorFromNodeOutputs(network->Apply(input)), expected_output);
+            // std::cout << "CalculateNumericalGradient: step_size=" << param_step_size << " param norms: " << (from_params-starting_params).norm() << " & " << (to_params-starting_params).norm() << " objective vals: from=" << from_obj_val << " to=" << to_obj_val << "(diff=" << to_obj_val - from_obj_val << ")" << std::endl;
+
+            param_delta(dim_idx) = to_obj_val - from_obj_val;
         }
 
-        // Transpose rows to columns, then reshape to column vector.  This results in the desired vector with entries in order of increasing
-        // connection "from" node id
-        weight_gradient.transposeInPlace();
-        return weight_gradient.reshaped(Eigen::AutoSize, 1);
+        network->SetOptimizedParams(starting_params);
+
+        return param_delta.array() / (2.0 * param_step_size);
     }
 }
