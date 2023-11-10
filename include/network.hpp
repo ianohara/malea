@@ -133,6 +133,7 @@ namespace Vs {
         // This is the derivative of the ObjectiveFunction with respect to each of the final layer
         // outputs.  Since the expected outputs and outputs are constant, this is just the sum of the elements of
         // 2*(expected-final_layer) * -1 since the derivative of the argument wrt the final layer outputs is -1
+        // This only returns the given requested index.  EG the derivative wrt last layer node id final_layer_idx.
         BVal Derivative(IOVector final_layer_output, IOVector expected_output, size_t final_layer_idx) override {
             auto differences = -2.0 * (expected_output - final_layer_output);
             return differences(final_layer_idx);
@@ -143,7 +144,32 @@ namespace Vs {
         }
     };
 
+    class _LogLoss : public ObjectiveFunction {
+    public:
+        FVal Apply(IOVector final_layer_output, IOVector expected_output) override {
+            if (Vs::Debug) {
+                // For log loss, the expected output should be a "one hot" vector (1 entry is 1.0, all others 0.0) so
+                // exact comparisons work below.
+                assert(expected_output.nonZeros() == 1);
+                assert(expected_output.array().sum() == 1.0);
+            }
+
+            // The log loss function is sum(expected*log(actual)) for each entry.  Since only 1 expected output is non-zero, we could
+            // find that one and multiply versus its actual entry (aka ignore the sum) but just in case, just do the full calc here.
+            return (-expected_output.array() * Eigen::log(final_layer_output.array())).sum();
+        }
+
+        BVal Derivative(IOVector final_layer_output, IOVector expected_output, size_t final_layer_idx) override {
+            return (-expected_output.array() * (1 / final_layer_output.array()))(final_layer_idx);
+        }
+
+        std::string Describe() override {
+            return "LogLossObjective";
+        }
+    };
+
     static auto SumOfSquaresObjective = std::make_shared<_SumOfSquares>();
+    static auto LogLossObjective = std::make_shared<_LogLoss>();
 
     static auto ReLu = std::make_shared<_ReLuImpl>();
     static auto PassThrough = std::make_shared<_PassThroughImpl>();

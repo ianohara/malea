@@ -143,6 +143,20 @@ TEST(Network, FiveNodeSoftMax)
     check();
 }
 
+TEST(Network, GradientFiveNodeSoftMax)
+{
+    Vs::Network n(5);
+    n.AddFullyConnectedLayer(5, Vs::PassThrough);
+    n.AddSoftMaxLayer();
+    n.SetUnityWeights();
+
+    Vs::IOVector input(5), expected(5);
+    input << 0.1, 0.2, 0.3, 0.4, 0.5;
+    expected << 0, 0, 0, 0, 1;
+
+    auto weight_gradient = n.WeightGradient(input, expected, Vs::SumOfSquaresObjective);
+}
+
 TEST(Network, GradientSingleNodeLayers)
 {
     const size_t num_layers = 4;
@@ -244,4 +258,24 @@ TEST(Network, GradientHandCalcChecks)
     n.SetWeightsWith(rand_weights);
 
     test(1, 0, 0);
+}
+
+TEST(Network, MNISTFullyConnected)
+{
+    const size_t image_pixels = 28 * 28;
+    Vs::Network n(image_pixels);
+    n.AddFullyConnectedLayer(100, Vs::ReLu);
+    n.AddFullyConnectedLayer(100, Vs::ReLu);
+    n.AddFullyConnectedLayer(10, Vs::ReLu);
+    n.AddSoftMaxLayer();
+
+    n.SetUnityWeights();
+
+    Vs::IOVector input(image_pixels);
+    input.fill(10);
+    Vs::IOVector expected_out(10);
+    expected_out.fill(0);
+    expected_out(1) = 1;
+
+    n.WeightGradient(input, expected_out, Vs::LogLossObjective);
 }
