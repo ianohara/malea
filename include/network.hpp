@@ -74,12 +74,16 @@ namespace Vs {
     class _SoftMaxImpl : public ActivationFunction {
     public:
         FVal Apply(size_t node_idx, const IOVector& node_inputs) override {
-            FVal denom = 0;
-            for (size_t idx = 0; idx < node_inputs.rows(); idx++) {
-                denom += std::exp(node_inputs(idx));
-            }
-
-            return std::exp(node_inputs(node_idx)) / denom;
+            // To avoid overflow, use the softmax(x) = softmax(x + c) identity where
+            // c is some constant.
+            //
+            // You can prove this by using the fact that any y^(a+b) = y^a * y^b and the
+            // fact that you can factor constants out of summations.
+            FVal node_input_max = node_inputs.maxCoeff();
+            const auto e = std::exp(1);
+            const auto numerator = Eigen::pow(e, node_inputs.array() - node_input_max);
+            FVal denom = numerator.sum();
+            return numerator(node_idx) / denom;
         }
 
         BVal Derivative(size_t node_idx, const IOVector& node_inputs) override {
@@ -314,6 +318,7 @@ namespace Vs {
                     accumulated_input += GetWeightForConnection(in_node_id, node_id) * node_output_values[in_node_id];
                 }
                 inputs(input_idx) = accumulated_input;
+                input_idx++;
             }
 
             return inputs;

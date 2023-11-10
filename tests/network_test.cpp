@@ -7,6 +7,12 @@
 
 static constexpr Vs::FVal NetEps = 0.0001;
 
+namespace VsTest {
+    static double RandInRange(double min, double max) {
+        return min + (max - min) * (std::rand() / static_cast<double>(RAND_MAX));
+    }
+}
+
 TEST(Network, Create)
 {
     Vs::Network n(200);
@@ -87,6 +93,54 @@ TEST(Network, BigHonkerReLu)
 
     auto node_outputs = n.Apply(input);
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), honkin_size * 123.0, NetEps);
+}
+
+TEST(Networm, SingleNodeSoftMax) {
+    Vs::Network n(1);
+    n.AddSoftMaxLayer();
+    n.SetUnityWeights();
+
+    Vs::IOVector input(1);
+
+    // Regardless of input this should always come out of a single node softmax as 1.
+    Vs::IOVector expected(1);
+    expected << 1.0;
+    for (size_t i = 0; i < 10; i++) {
+        input << VsTest::RandInRange(-1e6, 1e6);
+        auto all_output = n.Apply(input);
+        auto output = n.OutputVectorFromNodeOutputs(all_output);
+        ASSERT_NEAR(output(0), expected(0), NetEps) << "input=" << input.transpose() << " output=" << output.transpose() << " expected=" << expected << std::endl;
+    }
+
+}
+
+TEST(Network, FiveNodeSoftMax)
+{
+    Vs::Network n(5);
+    n.AddSoftMaxLayer();
+    n.SetUnityWeights();
+
+    Vs::IOVector input(5), expected(5);
+
+    auto check = [&]() {
+        auto all_node_outputs = n.Apply(input);
+        auto output = n.OutputVectorFromNodeOutputs(all_node_outputs);
+
+        ASSERT_EQ(output.size(), expected.size());
+        for (int i=0; i < 5; i++) {
+            ASSERT_NEAR(output(i), expected(i), NetEps)
+                << "output=" << output.transpose() << " doesn't match expected="
+                << expected.transpose() << " at least at index " << i << std::endl;
+        }
+    };
+
+    input << 0, 0, 0, 1, 0;
+    expected << 0.148848, 0.148848, 0.148848, 0.40461, 0.148848;
+    check();
+
+    input << 1000, 200000, 10, 20, 3.14;
+    expected << 0, 1, 0, 0, 0;
+    check();
 }
 
 TEST(Network, GradientSingleNodeLayers)

@@ -65,11 +65,6 @@ namespace Vs {
     IOVector Network::Apply(IOVector input) {
         assert(input.rows() == GetLayerNodeCount(0));
 
-        for (size_t n = 0; n < GetLayerNodeCount(0); n++) {
-            FVal val = ApplyNode(n, input);
-            node_output_values[n] = val;
-        }
-
         for (size_t layer_idx = 0; layer_idx < GetLayerCount(); layer_idx++) {
             IOVector layer_inputs = layer_idx == 0 ? input : GetLayerInputs(layer_idx);
             for (size_t node_idx : GetNodesForLayer(layer_idx)) {
@@ -84,7 +79,15 @@ namespace Vs {
         auto layer_idx = GetLayerForNode(node_idx);
         auto layer_node_idx = GlobalNodeToLayerNode(node_idx);
         auto fn = activation_functions[layer_idx];
-        return fn->Apply(layer_node_idx, node_values);
+        auto apply_value = fn->Apply(layer_node_idx, node_values);
+        if (Vs::Debug) {
+            std::cout << "Applying Node " << node_idx << ":" << std::endl
+                << "  layer=" << layer_idx << std::endl
+                << "  global=" << node_idx << "(layer_node=" << layer_node_idx << ")" << std::endl
+                << "  node_values=" << node_values.transpose() << std::endl
+                << "  apply_value=" << apply_value << std::endl;
+        }
+        return apply_value;
     }
 
     GradVector Network::WeightGradient(IOVector input, IOVector expected_output, std::shared_ptr<ObjectiveFunction> objective_fn) {
