@@ -71,6 +71,47 @@ namespace Vs {
         }
     };
 
+    class _SoftMaxImpl : public ActivationFunction {
+    public:
+        FVal Apply(size_t node_idx, const IOVector& node_inputs) override {
+            FVal denom = 0;
+            for (size_t idx = 0; idx < node_inputs.rows(); idx++) {
+                denom += std::exp(node_inputs(idx));
+            }
+
+            return std::exp(node_inputs(node_idx)) / denom;
+        }
+
+        BVal Derivative(size_t node_idx, const IOVector& node_inputs) override {
+            IOVector partial_derivs(node_inputs.rows());
+
+            for (size_t idx = 0; idx < node_inputs.rows(); idx++) {
+                if (idx == node_idx) {
+                    // Use idx and node_idx in this expression (even though equal!) just to denote that
+                    // we're doing a partial derivative wrt node_idx, and this is the partial when the
+                    // component index is the same as node_idx.
+                    //
+                    // There are a bunch of articles on this, or you can just do it by hand, but I think
+                    // I like this article best: https://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/
+                    partial_derivs(idx) = node_inputs(idx) * (1 - node_inputs(node_idx));
+                } else {
+                    partial_derivs(idx) = -node_inputs(idx) * node_inputs(node_idx);
+                }
+            }
+
+            // NOTE(imo): I don't think this is right, but am just plowing forward for now.  This is calculating
+            // the row of the Jacobian of the softmax layer where the derivative of the nth row in the softmax
+            // (our node_idx) is taken with respect to every other node input.  Then to get the "derivative"
+            // for node_idx we multiply each of those by the incoming node value for each node.  Don't think this
+            // is right, so will need to debug this.
+            return (partial_derivs.transpose() * node_inputs)(0);
+        }
+
+        std::string Describe() override {
+            return "SoftMaxActivation";
+        }
+    };
+
     class ObjectiveFunction {
     public:
         virtual FVal Apply(IOVector final_layer_output, IOVector expected_output) = 0;
@@ -103,6 +144,7 @@ namespace Vs {
     static auto ReLu = std::make_shared<_ReLuImpl>();
     static auto PassThrough = std::make_shared<_PassThroughImpl>();
     static auto ArgCubed = std::make_shared<_ArgCubedImpl>();  // Used for testing
+    static auto SoftMax = std::make_shared<_SoftMaxImpl>();
 
     class Network {
     public:
@@ -115,6 +157,8 @@ namespace Vs {
 
         // Adds a layer that is fully connected to the previously added layer.
         void AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn);
+
+        void AddSoftMaxLayer();
 
         inline size_t GetLayerForNode(size_t node_idx) {
             for (size_t layer_idx = 0; layer_idx < layer_nodes.size(); layer_idx++) {
@@ -254,7 +298,35 @@ namespace Vs {
 
         void ResizeForNodeCount(size_t old_node_count, size_t new_node_count);
 
-        FVal ApplyNode(size_t node_idx, FVal input);
+        FVal ApplyNode(size_t node_idx, const IOVector& node_values);
+
+        // This gets all the inputs for a layer's nodes (the weighted sum of incoming connections)
+        // In order for it to work, the node_output_values for the incoming node connections
+        // must be up to date!
+        IOVector GetLayerInputs(size_t layer_id) {
+            auto node_ids = GetNodesForLayer(layer_id);
+            IOVector inputs(node_ids.size());
+            size_t input_idx = 0;
+            for (size_t node_id : node_ids) {
+                auto incoming_node_ids = GetIncomingNodesFor(node_id);
+                FVal accumulated_input = 0;
+                for (size_t in_node_id : incoming_node_ids) {
+                    accumulated_input += GetWeightForConnection(in_node_id, node_id) * node_output_values[in_node_id];
+                }
+                inputs(input_idx) = accumulated_input;
+            }
+
+            return inputs;
+        }
+
+        size_t GlobalNodeToLayerNode(size_t global_node_id) {
+            size_t layer_idx = GetLayerForNode(global_node_id);
+            size_t starting_idx = layer_nodes[layer_idx].first;
+
+            // If the starting ID is 11, and global_node_id is 11, we should get 0 since it's
+            // the 0th node in the layer.
+            return global_node_id - starting_idx;
+        }
     };
 }
 
