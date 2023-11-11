@@ -13,6 +13,16 @@ add_library(vs_network src/network.cpp)
 target_include_directories(vs_network PRIVATE ${VS_INCLUDE_DIRECTORIES})
 target_link_libraries(vs_network PRIVATE Eigen3::Eigen)
 
+# NOTE(imo): X11 is only for the Cimg library.  Should get rid of CImg...
+find_package(X11 REQUIRED)
+if (NOT X11_FOUND)
+    error("Could not find X11")
+endif()
+
+add_library(vs_mnist_loader src/mnist_loader.cpp)
+target_include_directories(vs_mnist_loader PRIVATE ${VS_INCLUDE_DIRECTORIES})
+target_link_libraries(vs_mnist_loader PRIVATE Eigen3::Eigen CImg ${X11_LIBRARIES})
+
 add_executable(train src/train.cpp)
 target_include_directories(train PRIVATE ${VS_INCLUDE_DIRECTORIES})
 target_link_libraries(train PRIVATE Eigen3::Eigen cxxopts::cxxopts)
