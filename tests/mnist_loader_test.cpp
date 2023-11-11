@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "mnist_loader.hpp"
+#include "mnist.hpp"
 
 #include <cstdlib>
 #include <tuple>
@@ -41,6 +41,4 @@ TEST(MNISTLoader, LoadingWorks) {
     }
 
     Vs::MNISTLoader loader{std::string(mnist_labels_path), std::string(mnist_images_path)};
-
-    loader.WriteToDirectory("/tmp");
 }

@@ -43,6 +43,16 @@ namespace Vs {
         }
     }
 
+    void Network::HeInitialize(size_t layer_idx) {
+        for (size_t node_idx : GetNodesForLayer(layer_idx)) {
+            const double incoming_count = GetIncomingNodesFor(node_idx).size();
+            for (size_t incoming_idx : GetIncomingNodesFor(node_idx)) {
+                double standard_dev = std::sqrt(2.0 / incoming_count);
+                SetWeightForConnection(incoming_idx, node_idx, Vs::Util::RandInGaussian(0.0, standard_dev));
+            }
+        }
+    }
+
     void Network::ResizeForNodeCount(size_t old_count, size_t new_count) {
         auto new_first_index = old_count;
         auto added_nodes = new_count - old_count;

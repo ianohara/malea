@@ -1,4 +1,4 @@
-#include "mnist_loader.hpp"
+#include "mnist.hpp"
 
 #include <iostream>
 #include <cassert>
@@ -97,5 +97,20 @@ namespace Vs {
                 }
             }
         }
+    }
+
+    std::shared_ptr<Network> MNISTNetwork(size_t pixels_per_image) {
+        auto network = std::make_shared<Network>(pixels_per_image);
+        network->AddFullyConnectedLayer(100, Vs::ReLu);
+        network->AddFullyConnectedLayer(100, Vs::ReLu);
+        network->AddFullyConnectedLayer(10, Vs::ReLu);
+        network->AddSoftMaxLayer();
+
+        network->SetUnityWeights();
+        network->HeInitialize(1);
+        network->HeInitialize(2);
+        network->HeInitialize(3);
+
+        return network;
     }
 }

@@ -9,6 +9,8 @@
 
 #include "Eigen/Core"
 
+#include "util.hpp"
+
 namespace Vs {
     static constexpr bool Debug = false;
 
@@ -294,6 +296,8 @@ namespace Vs {
 
             return output;
         }
+
+        void HeInitialize(size_t layer_idx);
 
     private:
         // Each row represents the "from" node, and each column represents the "to" node.  So
