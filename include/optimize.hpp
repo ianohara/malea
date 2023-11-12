@@ -4,11 +4,11 @@
 #include "Eigen/Core"
 
 namespace Vs {
-    template <int ParamCount> class AdamOptimizer {
-    public:
-        typedef double ParamType;
-        typedef Eigen::Matrix<ParamType, ParamCount, 1> ParamVector;
+    typedef double ParamType;
+    typedef Eigen::Matrix<ParamType, Eigen::Dynamic, 1> ParamVector;
 
+    class AdamOptimizer {
+    public:
         AdamOptimizer(
             const double stepsize,
             const double beta_1,
@@ -22,12 +22,12 @@ namespace Vs {
             _steps++;
 
             _first_moment = _beta_1 * _first_moment + (1 - _beta_1) * current_gradient;
-            _second_moment = _beta_2 * _second_moment + (1 - _beta_2) * current_gradient.array().cwiseProduct(current_gradient);
+            _second_moment = _beta_2 * _second_moment.array() + (1 - _beta_2) * current_gradient.array().cwiseProduct(current_gradient.array());
 
             _first_moment_bias_corrected = _first_moment / (1 - std::pow(_beta_1, _steps));
             _second_moment_bias_corrected = _second_moment / (1 - std::pow(_beta_2, _steps));
 
-            _last_params = current_params - _stepSize * _second_moment_bias_corrected / (_first_moment_bias_corrected.array().sqrt() + _epsilon);
+            _last_params = current_params.array() - _stepSize * _second_moment_bias_corrected.array() / (_first_moment_bias_corrected.array().sqrt() + _epsilon);
 
             return _last_params;
         }

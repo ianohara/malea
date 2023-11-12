@@ -23,6 +23,10 @@ namespace Vs {
 
     void WriteToDirectory(const std::string& path);
 
+    size_t GetPixelsPerImage() {
+        return _images[0].cols() * _images[0].rows();
+    }
+
     private:
         const std::string _label_path;
         const std::string _image_path;
