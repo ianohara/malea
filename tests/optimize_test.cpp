@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 
 #include "optimize.hpp"
+#include "util.hpp"
 
 TEST(Optimize, BasicWorking) {
     Vs::AdamOptimizer optimizer(0.01, 0.9, 0.999, 1e-8, 200);
@@ -18,7 +19,13 @@ TEST(Optimize, RastriginFunction) {
     constexpr double A = 10;
     Vs::AdamOptimizer optimizer(0.01, 0.9, 0.999, 1e-8, dims);
 
-    Vs::ParamVector current = Vs::ParamVector::Random(dims) * 5.12;
+    // The suggested search domain is -5.12 to 5.12 for all the dimensions.  Set most of them
+    // pretty far away from the minimum (at 0) but set a few to random within that range.
+    Vs::ParamVector current(dims);
+    current.fill(-5);
+    current(3) = Vs::Util::RandInRange(-5.12, 5.12);
+    current(8) = Vs::Util::RandInRange(-5.12, 5.12);
+
     Vs::ParamVector gradient(dims);
     gradient.fill(0);
 
@@ -31,8 +38,10 @@ TEST(Optimize, RastriginFunction) {
         return gradient;
     };
 
-    while (current.sum() > 0.1) {
-        std::cout << "Current is: " << current.transpose() << std::endl;
+    size_t step_count = 0;
+    while (current.norm() > 0.01) {
         current = optimizer.Step(current, rastragin_gradient(current));
+        step_count++;
+        GTEST_ASSERT_TRUE(step_count < 2000) << "The optimizer should converge in less than 2000 (arbitrary) steps on the 9 dimensional Rastrigin Function.";
     }
 }

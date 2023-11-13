@@ -18,7 +18,8 @@ namespace Vs {
         auto old_node_count = from_end + 1;
         auto new_node_count = to_end + 1;
 
-        biases.push_back(0);
+        biases.conservativeResize(layer_nodes.size() - 1, 1);
+        biases.tail<1>()[0] = 0;
 
         ResizeForNodeCount(old_node_count, new_node_count);
     }
@@ -104,6 +105,7 @@ namespace Vs {
                 << "  node_values=" << node_values.transpose() << std::endl
                 << "  apply_value=" << apply_value << std::endl;
         }
+        assert(!std::isnan(apply_value));
         return apply_value;
     }
 

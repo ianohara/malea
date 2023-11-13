@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/.build/tests/all_tests",
-            "args": [],
+            "args": ["--gtest_filter='*RastriginFunction*'"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

@@ -303,6 +303,12 @@ namespace Vs {
             return weights.cols() * weights.rows() + biases.size();
         }
 
+        IOVector GetOptimizedParams() {
+            IOVector params(GetOptimizedParamsCount());
+            params << weights.reshaped(Eigen::AutoSize, 1), biases;
+            return params;
+        }
+
         void SetOptimizedParams(Eigen::Matrix<WVal, Eigen::Dynamic, 1> new_params) {
             assert((weights.size() + biases.size()) == new_params.size());
             // TODO(imo): Make this more efficient...
@@ -314,7 +320,7 @@ namespace Vs {
             }
 
             for (size_t bias_idx = 0; bias_idx < biases.size(); bias_idx++) {
-                biases[count + bias_idx] = new_params(count + bias_idx);
+                biases(bias_idx) = new_params(count + bias_idx);
             }
         }
 
@@ -343,7 +349,7 @@ namespace Vs {
         //
         // NOTE(imo): layer 0 does not have a bias, so the biases entries are layer shifted by 1.
         // AKA the layer 1 bias is in biases[0]
-        std::vector<WVal> biases;
+        IOVector biases;
 
         // The scratch pad for keeping track of the forward evaluation values of nodes.  This is only
         // valid for a particular input vector, and really shouldn't be used outside of Apply and

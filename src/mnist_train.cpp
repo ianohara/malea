@@ -40,6 +40,7 @@ int main(int arg_count, char** args) {
     const size_t training_count = mnist_training_data.Count();
 
     Vs::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
+    current_params << mnist_network->GetOptimizedParams();
 
     size_t count_in_batch = 0;
     Vs::FVal batch_error = 0;
@@ -47,23 +48,31 @@ int main(int arg_count, char** args) {
     batch_gradient.fill(0);
 
     for (size_t training_idx=0; training_idx < training_count; training_idx++) {
-        std::cout << "Loading training sample #" << training_idx << std::endl;
+        // std::cout << "Loading training sample #" << training_idx << std::endl;
         auto[this_label, this_image] = mnist_training_data.GetSample(training_idx);
 
-        std::cout << "  Getting one hot vector..." << std::endl;
+        // std::cout << "  Getting one hot vector..." << std::endl;
         auto this_one_hot = Vs::MNIST::GetOneHotVector(this_label);
-        std::cout << "  Getting image in input format..." << std::endl;
+        // std::cout << "  Getting image in input format..." << std::endl;
         auto this_image_input_format = Vs::MNIST::ImageToInput(this_image);
-        std::cout << "  Calculating gradient..." << std::endl;
-        batch_gradient += mnist_network->WeightGradient(this_image_input_format, this_one_hot, Vs::LogLossObjective);
+        // std::cout << "  Calculating gradient..." << std::endl;
+        Vs::GradVector sample_gradient = mnist_network->WeightGradient(this_image_input_format, this_one_hot, Vs::LogLossObjective);
+        // std::cout << "  sample_gradient norm is " << sample_gradient.norm() << std::endl;
+        batch_gradient += sample_gradient;
         // TODO(imo): Make gradient return apply too so we don't need to double do this...
-        batch_error += Vs::LogLossObjective->Apply(mnist_network->OutputVectorFromNodeOutputs(mnist_network->Apply(this_image_input_format)), this_one_hot);
+        auto prediction_vector = mnist_network->OutputVectorFromNodeOutputs(mnist_network->Apply(this_image_input_format));
+        batch_error += Vs::LogLossObjective->Apply(prediction_vector, this_one_hot);
         count_in_batch++;
 
         if (count_in_batch >= batch_size || training_idx >= training_count) {
             std::cout << "  Batch ready, taking step (Batch error=" << batch_error << ")..." << std::endl;
+            std::cout << "    Last one hot (label=" << this_label << ") vs prediction: " << std::endl
+                << "      " << this_one_hot.transpose() << std::endl
+                << "      " << prediction_vector.transpose() << std::endl;
+
             std::cout << "    Averaging gradient..." << std::endl;
             batch_gradient /= static_cast<Vs::FVal>(count_in_batch);
+            std::cout << "    batch gradient norm is=" << batch_gradient.norm() << std::endl;
 
             std::cout << "    Taking step..." << std::endl;
             current_params = optimizer.Step(current_params, batch_gradient);
