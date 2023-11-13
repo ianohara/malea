@@ -27,6 +27,14 @@ namespace Vs {
         return _images[0].cols() * _images[0].rows();
     }
 
+    size_t Count() {
+        return _labels.size();
+    }
+
+    std::tuple<size_t, EigenImage> GetSample(size_t sample_idx) {
+        return std::make_tuple(_labels[sample_idx], _images[sample_idx]);
+    }
+
     private:
         const std::string _label_path;
         const std::string _image_path;
@@ -37,7 +45,10 @@ namespace Vs {
         void LoadLabels(const std::string& path);
         void LoadImages(const std::string& path);
     };
-
-    std::shared_ptr<Network> MNISTNetwork(size_t pixels_per_image);
+    namespace MNIST {
+        std::shared_ptr<Vs::Network> Network(size_t pixels_per_image);
+        Vs::IOVector GetOneHotVector(size_t label);
+        Vs::IOVector ImageToInput(Vs::EigenImage image);
+    }
 }
 #endif /* MNIST_HPP */

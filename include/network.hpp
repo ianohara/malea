@@ -299,6 +299,21 @@ namespace Vs {
 
         void HeInitialize(size_t layer_idx);
 
+        size_t GetOptimizedWeightCount() {
+            return weights.cols() * weights.rows();
+        }
+
+        void SetOptimizedWeights(Eigen::Matrix<WVal, Eigen::Dynamic, 1> new_weights) {
+            assert(weights.size() == new_weights.size());
+            // TODO(imo): Make this more efficient...
+            size_t count = 0;
+            for (size_t col = 0; col < weights.cols(); col++) {
+                for (size_t row = 0; row < weights.rows(); row++) {
+                    weights(row, col) = new_weights(count++);
+                }
+            }
+        }
+
     private:
         // Each row represents the "from" node, and each column represents the "to" node.  So
         // entry [i][j] is the weight for the connection from node i to node j in the network.

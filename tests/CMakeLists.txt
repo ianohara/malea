@@ -5,6 +5,7 @@ add_executable(
     train_test.cpp
     network_test.cpp
     mnist_loader_test.cpp
+    optimize_test.cpp
 )
 
 target_include_directories(
@@ -20,6 +21,7 @@ target_link_libraries(
     Eigen3::Eigen
     vs_network
     vs_mnist
+    vs_optimize
 )
 
 target_compile_definitions(all_tests PRIVATE VS_CMAKE_BUILD_ROOT="${CMAKE_BINARY_DIR}")
