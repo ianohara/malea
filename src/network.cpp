@@ -159,7 +159,7 @@ namespace Vs {
         //    For each node in the last layer, del(O) / del(w_ji) is just:
         //      del(O) / del(o_l) * del(o_l) / del(i_l) * w_ji
         //    For each node in the l-1 layer, calculate del(o_l-1i) / del(i_l-1i)
-        //      (the rate of change of the node with respect to the node's input)
+        //      (the rate of change of the node output with respect to the node's input)
         //    and then:
         //      del(O) / del(w_ji) = sum(w_ji * del(O)/del(i_i))
         //    So we want to store the del(O)/del(i_i) values so that each i-1 layer
@@ -181,6 +181,10 @@ namespace Vs {
         auto weight_gradient = Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic>();
         weight_gradient.resizeLike(weights);
         weight_gradient.fill(0);
+
+        auto bias_gradient = Eigen::Matrix<BVal, Eigen::Dynamic, 1>();
+        bias_gradient.resize(biases.size());
+        bias_gradient.fill(0);
 
         // TODO(imo): Remove this zeroing; it is just for debug.
         std::fill(del_objective_del_node_input.begin(), del_objective_del_node_input.end(), 0.0);
@@ -231,16 +235,19 @@ namespace Vs {
                 for (auto incoming_node_idx : GetIncomingNodesFor(current_node)) {
                     weight_gradient(incoming_node_idx, current_node) = node_outputs[incoming_node_idx] * del_objective_del_node_input[current_node];
                 }
+
+                // For biases, the "incoming" node value is 1 since it looks like a connection from a node with constant output and weight == bias.
+                // biases are shifted -1 because there is no layer 0 bias.
+                bias_gradient(layer_id - 1) = del_objective_del_node_input[current_node];
             }
         }
 
-        for (auto node_idx = 0; node_idx < GetNodeCount(); node_idx++) {
-            FVal incoming_weighted_sum = 0.0;
-            for (auto incoming_node_idx : GetIncomingNodesFor(node_idx)) {
-                incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, node_idx);
-            }
-
-            if (Vs::Debug) {
+        if (Vs::Debug) {
+            for (auto node_idx = 0; node_idx < GetNodeCount(); node_idx++) {
+                FVal incoming_weighted_sum = 0.0;
+                for (auto incoming_node_idx : GetIncomingNodesFor(node_idx)) {
+                    incoming_weighted_sum += node_outputs[incoming_node_idx] * GetWeightForConnection(incoming_node_idx, node_idx);
+                }
                 std::cout << "For node " << node_idx << std::endl
                     << "  del_objective_del_node_input " << del_objective_del_node_input[node_idx] << std::endl
                     << "  node_outputs " << node_outputs[node_idx] << std::endl
@@ -251,6 +258,11 @@ namespace Vs {
             }
         }
 
-        return weight_gradient.reshaped(Eigen::AutoSize, 1);
+        auto weight_gradient_col = weight_gradient.reshaped(Eigen::AutoSize, 1);
+
+        Eigen::Matrix<BVal, Eigen::Dynamic, 1> gradient(weight_gradient_col.rows() + bias_gradient.rows());
+        gradient << weight_gradient_col, bias_gradient;
+
+        return gradient;
     }
 }
