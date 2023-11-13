@@ -191,7 +191,9 @@ namespace Vs {
         // its input arg (versus just the activation function).
         const size_t last_layer_idx = GetLayerCount() - 1;
 
-        for (int layer_id = last_layer_idx; layer_id >= 0; layer_id--) {
+        // NOTE(imo): Layer 0 doesn't have any weights associated with it, so we can skip it and only
+        //   go down to layer 1.
+        for (int layer_id = last_layer_idx; layer_id >= 1; layer_id--) {
             IOVector layer_inputs = GetLayerInputs(layer_id);
 
             for (auto current_node : GetNodesForLayer(layer_id)) {
