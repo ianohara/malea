@@ -299,18 +299,22 @@ namespace Vs {
 
         void HeInitialize(size_t layer_idx);
 
-        size_t GetOptimizedWeightCount() {
-            return weights.cols() * weights.rows();
+        size_t GetOptimizedParamsCount() {
+            return weights.cols() * weights.rows() + biases.size();
         }
 
-        void SetOptimizedWeights(Eigen::Matrix<WVal, Eigen::Dynamic, 1> new_weights) {
-            assert(weights.size() == new_weights.size());
+        void SetOptimizedParams(Eigen::Matrix<WVal, Eigen::Dynamic, 1> new_params) {
+            assert((weights.size() + biases.size()) == new_params.size());
             // TODO(imo): Make this more efficient...
             size_t count = 0;
-            for (size_t col = 0; col < weights.cols(); col++) {
-                for (size_t row = 0; row < weights.rows(); row++) {
-                    weights(row, col) = new_weights(count++);
+            for (size_t row = 0; row < weights.rows(); row++) {
+                for (size_t col = 0; col < weights.cols(); col++) {
+                    weights(row, col) = new_params(count++);
                 }
+            }
+
+            for (size_t bias_idx = 0; bias_idx < biases.size(); bias_idx++) {
+                biases[count + bias_idx] = new_params(count + bias_idx);
             }
         }
 
@@ -335,6 +339,12 @@ namespace Vs {
         // For each layer, the activation function used for its nodes.
         std::vector<std::shared_ptr<ActivationFunction>> activation_functions;
 
+        // Each layer has a constant bias that is added to its node's inputs.
+        //
+        // NOTE(imo): layer 0 does not have a bias, so the biases entries are layer shifted by 1.
+        // AKA the layer 1 bias is in biases[0]
+        std::vector<WVal> biases;
+
         // The scratch pad for keeping track of the forward evaluation values of nodes.  This is only
         // valid for a particular input vector, and really shouldn't be used outside of Apply and
         // WeightGradient
@@ -352,7 +362,10 @@ namespace Vs {
         // This gets all the inputs for a layer's nodes (the weighted sum of incoming connections)
         // In order for it to work, the node_output_values for the incoming node connections
         // must be up to date!
+        //
+        // NOTE(imo): Getting layer inputs for layer 0 is invalid since it is the input layer.
         IOVector GetLayerInputs(size_t layer_id) {
+            assert(layer_id >= 1 && layer_id < layer_nodes.size());
             auto node_ids = GetNodesForLayer(layer_id);
             IOVector inputs(node_ids.size());
             size_t input_idx = 0;
@@ -362,6 +375,7 @@ namespace Vs {
                 for (size_t in_node_id : incoming_node_ids) {
                     accumulated_input += GetWeightForConnection(in_node_id, node_id) * node_output_values[in_node_id];
                 }
+                accumulated_input += biases[layer_id - 1];
                 inputs(input_idx) = accumulated_input;
                 input_idx++;
             }

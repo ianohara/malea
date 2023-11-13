@@ -242,7 +242,7 @@ TEST(Network, GradientHandCalcChecks)
 
         auto [del_E_del_w_13, del_E_del_w_35] = calc_dels(node_outputs, output);
 
-        auto index_for = [&n](int row, int col) { return row * n.GetNodeCount() + col; };
+        auto index_for = [&n](int row, int col) { return col * n.GetNodeCount() + row; };
         ASSERT_NEAR(gradient(index_for(3, 5)), del_E_del_w_35, NetEps);
         ASSERT_NEAR(gradient(index_for(1, 3)), del_E_del_w_13, NetEps);
     };

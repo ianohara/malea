@@ -34,12 +34,12 @@ int main(int arg_count, char** args) {
     std::cout << "Building MNIST Network..." << std::endl;
     auto mnist_network = Vs::MNIST::Network(mnist_training_data.GetPixelsPerImage());
 
-    Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"), mnist_network->GetOptimizedWeightCount());
+    Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"), mnist_network->GetOptimizedParamsCount());
 
     const size_t batch_size = result["batch_size"].as<size_t>();
     const size_t training_count = mnist_training_data.Count();
 
-    Vs::ParamVector current_params(mnist_network->GetOptimizedWeightCount());
+    Vs::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
 
     size_t count_in_batch = 0;
     Vs::FVal batch_error = 0;
@@ -68,7 +68,7 @@ int main(int arg_count, char** args) {
             std::cout << "    Taking step..." << std::endl;
             current_params = optimizer.Step(current_params, batch_gradient);
             std::cout << "    Putting new weights into network..." << std::endl;
-            mnist_network->SetOptimizedWeights(current_params);
+            mnist_network->SetOptimizedParams(current_params);
             std::cout << "Completed step " << optimizer.GetStepCount() << std::endl;
 
             batch_error = 0;

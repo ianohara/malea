@@ -4,6 +4,11 @@
 
 namespace Vs {
     void Network::AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
+        // NOTE(imo): This assert is just a protection against using this in the
+        // constructor for layer 0 at some point in the future.  Biases would be
+        // broken by doing so.
+        assert(layer_nodes.size() >= 1);
+
         auto[from_start, from_end] = layer_nodes.back();
 
         layer_nodes.emplace_back(from_end + 1, from_end + nodes);
@@ -12,6 +17,8 @@ namespace Vs {
         activation_functions.push_back(fn);
         auto old_node_count = from_end + 1;
         auto new_node_count = to_end + 1;
+
+        biases.push_back(0);
 
         ResizeForNodeCount(old_node_count, new_node_count);
     }
@@ -242,9 +249,6 @@ namespace Vs {
             }
         }
 
-        // Transpose rows to columns, then reshape to column vector.  This results in the desired vector with entries in order of increasing
-        // connection "from" node id
-        weight_gradient.transposeInPlace();
         return weight_gradient.reshaped(Eigen::AutoSize, 1);
     }
 }
