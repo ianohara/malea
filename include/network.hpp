@@ -270,7 +270,8 @@ namespace Vs {
         GradVector WeightGradient(IOVector input, IOVector output, std::shared_ptr<ObjectiveFunction> objective_fn);
 
         inline void SetAllWeightsTo(WVal weight) {
-            weights.fill(weight);
+            auto constant_one = [](size_t row, size_t col){return 1;};
+            SetWeightsWith(constant_one);
         }
 
         inline void SetUnityWeights() {
@@ -300,7 +301,11 @@ namespace Vs {
         void HeInitialize(size_t layer_idx);
 
         size_t GetOptimizedParamsCount() {
-            return weights.cols() * weights.rows() + biases.size();
+            return GetOptimizedWeightCount() + biases.size();
+        }
+
+        size_t GetOptimizedWeightCount() {
+            return weights.cols() * weights.rows();
         }
 
         IOVector GetOptimizedParams() {
@@ -321,6 +326,142 @@ namespace Vs {
 
             for (size_t bias_idx = 0; bias_idx < biases.size(); bias_idx++) {
                 biases(bias_idx) = new_params(count + bias_idx);
+            }
+        }
+
+        void SummarizeNonZeroParams(std::ostream &stream) {
+            auto non_zero_count = [](const Eigen::Matrix<WVal, Eigen::Dynamic, Eigen::Dynamic> &m) {
+                size_t non_zero_count = 0;
+                for (size_t row = 0; row < m.rows(); row++) {
+                    for (size_t col = 0; col < m.cols(); col++) {
+                        if (std::abs(m(row, col)) > 0.00001) {
+                            non_zero_count++;
+                        }
+                    }
+                }
+
+                return non_zero_count;
+            };
+
+            auto true_count = [](const Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> &m) {
+                size_t non_zero_count = 0;
+                for (size_t row = 0; row < m.rows(); row++) {
+                    for (size_t col = 0; col < m.cols(); col++) {
+                        if (m(row, col)) {
+                            non_zero_count++;
+                        }
+                    }
+                }
+
+                return non_zero_count;
+            };
+
+            auto n_vals = [](Eigen::Matrix<FVal, Eigen::Dynamic, Eigen::Dynamic> m, size_t n, bool min) {
+                std::vector<BVal> all_vals;
+                for (size_t row = 0; row < m.rows(); row++) {
+                    for (size_t col = 0; col < m.cols(); col++) {
+                        all_vals.push_back(m(row, col));
+                    }
+                }
+
+                if (min) {
+                    std::sort(all_vals.begin(), all_vals.end());
+                } else {
+                    std::sort(all_vals.rbegin(), all_vals.rend());
+                }
+
+                std::stringstream ss;
+                for (size_t idx = 0; idx < n && idx < all_vals.size(); idx++) {
+                    ss << all_vals[idx] << ",";
+                }
+
+                return ss.str();
+            };
+
+            stream
+                << "Network Parameter Summary" << std::endl
+                << "  Optimized Weight Count: " << GetOptimizedWeightCount() << std::endl
+                << "  Non-zero weight count : " << non_zero_count(weights) << std::endl
+                << "  Max 100 weights       : " << n_vals(weights, 100, false) << std::endl
+                << "  Min 100 weights       : " << n_vals(weights, 100, true) << std::endl
+                << "  Total Weight Count    : " << weights.cols() * weights.rows() << std::endl
+                << "  Optimized Bias Count  : " << GetOptimizedParamsCount() - GetOptimizedWeightCount() << std::endl
+                << "  Non-zero biases count : " << non_zero_count(biases) << std::endl
+                << "  Max 100 biases        : " << n_vals(biases, 100, false) << std::endl
+                << "  Min 100 biases        : " << n_vals(biases, 100, true) << std::endl
+                << "  Bias Count            : " << biases.cols() * biases.rows() << std::endl
+                << "  Connection count      : " << connections.cols() * connections.rows() << std::endl
+                << "  Non-zero Connections  : " << true_count(connections) << std::endl;
+        }
+
+        void SummarizeParamGradient(std::ostream &stream, const IOVector &gradient) {
+            auto n_vals = [&gradient](size_t n, bool min) {
+                std::vector<BVal> all_vals;
+                for (size_t row = 0; row < gradient.rows(); row++) {
+                    all_vals.push_back(gradient(row));
+                }
+
+                if (min) {
+                    std::sort(all_vals.begin(), all_vals.end());
+                } else {
+                    std::sort(all_vals.rbegin(), all_vals.rend());
+                }
+
+                std::stringstream ss;
+                for (size_t idx = 0; idx < n; idx++) {
+                    ss << all_vals[idx] << ",";
+                }
+
+                return ss.str();
+            };
+
+            auto min_100 = [&gradient, &n_vals]() { return n_vals(100, true); };
+            auto max_100 = [&gradient, &n_vals]() { return n_vals(100, false); };
+
+            stream
+                << "Gradient Summary" << std::endl
+                << "  gradient rows,cols = " << gradient.rows() << ", " << gradient.cols() << std::endl
+                << "  gradient min 10 vals " << min_100() << std::endl
+                << "  gradient max 10 vals " << max_100() << std::endl;
+        }
+
+        // NOTE(imo): This uses the internal results of the last call to WeightGradient.  It's invalid to call
+        // if WeightGradient has not been called!
+        void SummarizeObjDelNode(std::ostream &stream) {
+            stream << "Summary of objective gradient wrt each node" << std::endl;
+            for (size_t layer_idx = 1; layer_idx < GetLayerCount(); layer_idx++) {
+                stream << "  Layer " << layer_idx << std::endl;
+                for (size_t node_idx : GetNodesForLayer(layer_idx)) {
+                    stream << "    n=" << node_idx << " del_O/del_i=" << del_objective_del_node_input[node_idx] << std::endl;
+                }
+            }
+        }
+
+        // Given this input vector, apply it and then print out all the network's node outputs layer by layer.
+        void SummarizeNodeOutputs(std::ostream &stream, const IOVector& input, bool include_input_layer) {
+            auto node_outputs = Apply(input);
+            stream << "Summary of node outputs" << std::endl;
+            for (size_t layer_idx = include_input_layer ? 0 : 1; layer_idx < GetLayerCount(); layer_idx++) {
+                stream << "  Layer " << layer_idx << std::endl;
+                for (size_t node_idx : GetNodesForLayer(layer_idx)) {
+                    stream << "    n=" << node_idx << " output=" << node_outputs[node_idx] << std::endl;
+                }
+            }
+        }
+
+        void SummarizeWeightsForLayer(std::ostream &stream, const size_t layer_idx, const size_t max_to_print /* 0 for all, this is per node */) {
+            stream << "Weights & Bias for layer " << layer_idx << std::endl;
+            stream << "  bias=" << biases[layer_idx - 1] << std::endl;
+            for (size_t node_idx : GetNodesForLayer(layer_idx)) {
+                stream << "  node " << node_idx << std::endl;
+                size_t this_count = 0;
+                for (size_t incoming_idx : GetIncomingNodesFor(node_idx)) {
+                    if (max_to_print && this_count >= max_to_print) {
+                        break;
+                    }
+                    stream << "    " << incoming_idx << "->" << node_idx << "=" << GetWeightForConnection(incoming_idx, node_idx) << std::endl;
+                    this_count++;
+                }
             }
         }
 

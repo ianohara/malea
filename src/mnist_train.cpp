@@ -16,6 +16,7 @@ int main(int arg_count, char** args) {
         ("B,beta_2", "Beta 2 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.999"))
         ("e,epsilon", "Epsilon in the adam optimizer.", cxxopts::value<double>()->default_value("1e-8"))
         ("c,batch_size", "Number of training samples per gradient step", cxxopts::value<size_t>()->default_value("10"))
+        ("m,mini", "Use the mini network (for debugging)", cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print this help message");
 
     auto result = options.parse(arg_count, args);
@@ -32,7 +33,7 @@ int main(int arg_count, char** args) {
     Vs::MNISTLoader mnist_training_data(result["labels"].as<std::string>(), result["images"].as<std::string>());
 
     std::cout << "Building MNIST Network..." << std::endl;
-    auto mnist_network = Vs::MNIST::Network(mnist_training_data.GetPixelsPerImage());
+    auto mnist_network = result["mini"].as<bool>() ? Vs::MNIST::MiniNetwork(mnist_training_data.GetPixelsPerImage()) : Vs::MNIST::Network(mnist_training_data.GetPixelsPerImage());
 
     Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"), mnist_network->GetOptimizedParamsCount());
 
@@ -56,11 +57,12 @@ int main(int arg_count, char** args) {
         // std::cout << "  Getting image in input format..." << std::endl;
         auto this_image_input_format = Vs::MNIST::ImageToInput(this_image);
         // std::cout << "  Calculating gradient..." << std::endl;
-        Vs::GradVector sample_gradient = mnist_network->WeightGradient(this_image_input_format, this_one_hot, Vs::LogLossObjective);
+        Vs::GradVector sample_gradient = mnist_network->WeightGradient(this_image_input_format, this_one_hot, Vs::SumOfSquaresObjective);
         // std::cout << "  sample_gradient norm is " << sample_gradient.norm() << std::endl;
         batch_gradient += sample_gradient;
         // TODO(imo): Make gradient return apply too so we don't need to double do this...
-        auto prediction_vector = mnist_network->OutputVectorFromNodeOutputs(mnist_network->Apply(this_image_input_format));
+        auto this_full_node_output = mnist_network->Apply(this_image_input_format);
+        auto prediction_vector = mnist_network->OutputVectorFromNodeOutputs(this_full_node_output);
         batch_error += Vs::LogLossObjective->Apply(prediction_vector, this_one_hot);
         count_in_batch++;
 
@@ -73,7 +75,12 @@ int main(int arg_count, char** args) {
             std::cout << "    Averaging gradient..." << std::endl;
             batch_gradient /= static_cast<Vs::FVal>(count_in_batch);
             std::cout << "    batch gradient norm is=" << batch_gradient.norm() << std::endl;
-
+            mnist_network->SummarizeNonZeroParams(std::cout);
+            mnist_network->SummarizeParamGradient(std::cout, batch_gradient);
+            mnist_network->SummarizeObjDelNode(std::cout);
+            mnist_network->SummarizeNodeOutputs(std::cout, this_image_input_format, false);
+            mnist_network->SummarizeWeightsForLayer(std::cout, 2, 10);
+            mnist_network->SummarizeWeightsForLayer(std::cout, 3, 10);
             std::cout << "    Taking step..." << std::endl;
             current_params = optimizer.Step(current_params, batch_gradient);
             std::cout << "    Putting new weights into network..." << std::endl;

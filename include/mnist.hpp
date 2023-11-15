@@ -47,6 +47,7 @@ namespace Vs {
     };
     namespace MNIST {
         std::shared_ptr<Vs::Network> Network(size_t pixels_per_image);
+        std::shared_ptr<Vs::Network> MiniNetwork(size_t pixels_per_image);
         Vs::IOVector GetOneHotVector(size_t label);
         Vs::IOVector ImageToInput(Vs::EigenImage image);
     }
