@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include "cxxopts.hpp"
 #include "mnist.hpp"
@@ -16,7 +17,9 @@ int main(int arg_count, char** args) {
         "e,epsilon", "Epsilon in the adam optimizer.", cxxopts::value<double>()->default_value("1e-8"))(
         "c,batch_size", "Number of training samples per gradient step", cxxopts::value<size_t>()->default_value("10"))(
         "m,mini", "Use the mini network (for debugging)", cxxopts::value<bool>()->default_value("false"))(
-        "h,help", "Print this help message");
+        "h,help", "Print this help message")(
+        "l,load", "File to load starting parameters from", cxxopts::value<std::string>())(
+        "o,out", "File to write params to after each batch", cxxopts::value<std::string>()->default_value("/tmp/mnist_params.bin"));
 
     auto result = options.parse(arg_count, args);
     auto dbl_opt = [&result](std::string opt) -> double { return result[opt].as<double>(); };
@@ -39,6 +42,12 @@ int main(int arg_count, char** args) {
     std::cout << "Building MNIST Network..." << std::endl;
     auto mnist_network = result["mini"].as<bool>() ? Vs::MNIST::MiniNetwork(mnist_training_data.GetPixelsPerImage())
                                                    : Vs::MNIST::Network(mnist_training_data.GetPixelsPerImage());
+
+    if (result.count("load")) {
+        const std::string in_file = result["load"].as<std::string>();
+        std::cout << "Loading parameters from: " << in_file << std::endl;
+        mnist_network->DeserializeFrom(in_file);
+    }
 
     Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"),
                                 mnist_network->GetOptimizedParamsCount());
@@ -91,6 +100,13 @@ int main(int arg_count, char** args) {
             current_params = optimizer.Step(current_params, batch_gradient);
             // std::cout << "    Putting new weights into network..." << std::endl;
             mnist_network->SetOptimizedParams(current_params);
+
+            if (result.count("out")) {
+                const std::string out_file = result["out"].as<std::string>();
+                std::cout << "Writing parameters to: " << out_file << std::endl;
+                mnist_network->SerializeTo(out_file);
+            }
+
             std::cout << "Completed step " << optimizer.GetStepCount()
                       << " batch error / # samples in batch=" << batch_error / count_in_batch << std::endl;
 

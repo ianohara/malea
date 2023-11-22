@@ -1,6 +1,7 @@
 #include "network.hpp"
 
 #include <iostream>
+#include <fstream>
 
 namespace Vs {
 size_t Network::AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
@@ -305,4 +306,50 @@ Vs::GradVector CalculateNumericalGradient(const std::shared_ptr<Vs::Network> net
 
     return param_delta.array() / (2.0 * param_step_size);
 }
+
+    void Network::SerializeTo(std::string out_file) {
+        std::ofstream os(out_file, std::ios::binary);
+        if (!os.good()) {
+            std::stringstream ss;
+            ss << "Could not open file for binary output: '" << out_file << "'";
+            throw std::runtime_error(ss.str());
+        }
+
+        const IOVector params = GetOptimizedParams();
+        const ssize_t param_count = params.size();
+        os.seekp(0);
+        os.write(reinterpret_cast<const char*>(&param_count), sizeof(param_count));
+        for (ssize_t idx = 0; idx < param_count; idx++) {
+            const double this_param = params(idx);
+            os.write(reinterpret_cast<const char*>(&this_param), sizeof(this_param));
+        }
+    }
+
+    void Network::DeserializeFrom(std::string in_file) {
+        std::ifstream is(in_file, std::ios::binary);
+        if (!is.good()) {
+            std::stringstream ss;
+            ss << "Could not open file for binary input: '" << in_file << "'";
+            throw std::runtime_error(ss.str());
+        }
+
+        is.seekg(0);
+        IOVector read_params(GetOptimizedParamsCount());
+        ssize_t param_count_in_file = 0;
+        is.read(reinterpret_cast<char*>(&param_count_in_file), sizeof(param_count_in_file));
+
+        if (param_count_in_file != read_params.size()) {
+            std::stringstream ss;
+            ss << "Param count of network is " << read_params.size() << " but file contains " << param_count_in_file;
+            throw std::runtime_error(ss.str());
+        }
+
+        for (ssize_t idx = 0; idx < param_count_in_file; idx++) {
+            double this_param;
+            is.read(reinterpret_cast<char*>(&this_param), sizeof(this_param));
+            read_params(idx) = this_param;
+        }
+
+        SetOptimizedParams(read_params);
+    }
 }  // namespace Vs

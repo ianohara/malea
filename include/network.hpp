@@ -455,6 +455,11 @@ class Network {
         return weights.count(from_idx) && weights[from_idx].count(to_idx);
     }
 
+    // For now, these just serialize and deserialize the weights and biases and not the network structure.
+    // So you'll need to make sure that the param vector these load from file match your network's!
+    void SerializeTo(std::string out_file);
+    void DeserializeFrom(std::string in_file);
+
    private:
     typedef std::map<size_t, std::map<size_t, WVal>> OrderedWeightMap;
     typedef std::map<size_t, std::vector<size_t>> OrderedConnectionMap;

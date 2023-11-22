@@ -92,14 +92,7 @@ int main(int arg_count, char** args) {
 
         std::cout << "  Done epoch " << epoch << " with error=" << epoch_error << "..." << std::endl;
         epoch_gradient /= static_cast<Vs::FVal>(samples_per_epoch);
-        // xor_network->SummarizeNonZeroParams(std::cout);
-        // xor_network->SummarizeParamGradient(std::cout, epoch_gradient);
-        // xor_network->SummarizeObjDelNode(std::cout);
-        // // xor_network->SummarizeNodeOutputs(std::cout, this_image_input_format, false);
-        // xor_network->SummarizeWeightsForLayer(std::cout, 1, 10);
-        // std::cout << "    Taking step..." << std::endl;
         current_params = optimizer.Step(current_params, epoch_gradient);
-        // std::cout << "    Putting new weights into network..." << std::endl;
         xor_network->SetOptimizedParams(current_params);
     }
 
