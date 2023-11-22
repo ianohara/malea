@@ -1,5 +1,3 @@
 #include "gtest/gtest.h"
 
-TEST(Train_Main, ArgumentParsing) {
-
-}
+TEST(Train_Main, ArgumentParsing) {}

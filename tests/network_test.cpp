@@ -1,32 +1,27 @@
-#include "gtest/gtest.h"
-
 #include "network.hpp"
 
 #include <cstdlib>
 #include <tuple>
 
+#include "gtest/gtest.h"
+
 static constexpr Vs::FVal NetEps = 0.0001;
 
 namespace VsTest {
-    static double RandInRange(double min, double max) {
-        return min + (max - min) * (std::rand() / static_cast<double>(RAND_MAX));
-    }
+static double RandInRange(double min, double max) {
+    return min + (max - min) * (std::rand() / static_cast<double>(RAND_MAX));
 }
+}  // namespace VsTest
 
-TEST(Network, Create)
-{
-    Vs::Network n(200);
-}
+TEST(Network, Create) { Vs::Network n(200); }
 
-TEST(Network, FullyConnected)
-{
+TEST(Network, FullyConnected) {
     Vs::Network n(5);
     n.AddFullyConnectedLayer(3, Vs::ReLu);
     n.AddFullyConnectedLayer(4, Vs::ReLu);
 }
 
-TEST(Network, SingleNodePassThroughLayers)
-{
+TEST(Network, SingleNodePassThroughLayers) {
     Vs::Network n(1);
     n.AddFullyConnectedLayer(1, Vs::PassThrough);
     n.AddFullyConnectedLayer(1, Vs::PassThrough);
@@ -40,8 +35,7 @@ TEST(Network, SingleNodePassThroughLayers)
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 101.1, NetEps);
 }
 
-TEST(Network, SingleNodeReLuLayers)
-{
+TEST(Network, SingleNodeReLuLayers) {
     Vs::Network n(1);
     n.AddFullyConnectedLayer(1, Vs::ReLu);
     n.AddFullyConnectedLayer(1, Vs::ReLu);
@@ -59,8 +53,7 @@ TEST(Network, SingleNodeReLuLayers)
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 2.0, NetEps);
 }
 
-TEST(Network, TwoNodePassThroughLayers)
-{
+TEST(Network, TwoNodePassThroughLayers) {
     Vs::Network n(2);
     n.AddFullyConnectedLayer(2, Vs::PassThrough);
     n.AddFullyConnectedLayer(2, Vs::PassThrough);
@@ -75,8 +68,7 @@ TEST(Network, TwoNodePassThroughLayers)
     ASSERT_NEAR(n.OutputVectorFromNodeOutputs(node_outputs).sum(), 32, NetEps);
 }
 
-TEST(Network, BigHonkerReLu)
-{
+TEST(Network, BigHonkerReLu) {
     const size_t honkin_size = 250;
     Vs::Network n(honkin_size);
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
@@ -86,7 +78,7 @@ TEST(Network, BigHonkerReLu)
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.SetAllWeightsTo(1.0 / honkin_size); // So each layer adds up to the previous output
+    n.SetAllWeightsTo(1.0 / honkin_size);  // So each layer adds up to the previous output
 
     Vs::IOVector input(honkin_size);
     input.fill(123.0);
@@ -110,13 +102,12 @@ TEST(Networm, SingleNodeSoftMax) {
         input << VsTest::RandInRange(-1e6, 1e6);
         auto all_output = n.Apply(input);
         auto output = n.OutputVectorFromNodeOutputs(all_output);
-        ASSERT_NEAR(output(0), expected(0), NetEps) << "input=" << input.transpose() << " output=" << output.transpose() << " expected=" << expected << std::endl;
+        ASSERT_NEAR(output(0), expected(0), NetEps) << "input=" << input.transpose() << " output=" << output.transpose()
+                                                    << " expected=" << expected << std::endl;
     }
-
 }
 
-TEST(Network, FiveNodeSoftMax)
-{
+TEST(Network, FiveNodeSoftMax) {
     Vs::Network n(5);
     n.AddSoftMaxLayer();
 
@@ -127,10 +118,10 @@ TEST(Network, FiveNodeSoftMax)
         auto output = n.OutputVectorFromNodeOutputs(all_node_outputs);
 
         ASSERT_EQ(output.size(), expected.size());
-        for (int i=0; i < 5; i++) {
+        for (int i = 0; i < 5; i++) {
             ASSERT_NEAR(output(i), expected(i), NetEps)
-                << "output=" << output.transpose() << " doesn't match expected="
-                << expected.transpose() << " at least at index " << i << std::endl;
+                << "output=" << output.transpose() << " doesn't match expected=" << expected.transpose()
+                << " at least at index " << i << std::endl;
         }
     };
 
@@ -147,8 +138,7 @@ TEST(Network, FiveNodeSoftMax)
     check();
 }
 
-TEST(Network, GradientFiveNodeSoftMax)
-{
+TEST(Network, GradientFiveNodeSoftMax) {
     Vs::Network n(5);
     n.AddFullyConnectedLayer(5, Vs::ReLu);
     n.AddSoftMaxLayer();
@@ -161,13 +151,11 @@ TEST(Network, GradientFiveNodeSoftMax)
     auto weight_gradient = n.WeightGradient(input, expected, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientSingleNodeLayers)
-{
+TEST(Network, GradientSingleNodeLayers) {
     const size_t num_layers = 4;
     Vs::Network n(1);
 
-    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++)
-    {
+    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++) {
         n.AddFullyConnectedLayer(1, Vs::ReLu);
     }
     n.SetUnityWeights();
@@ -178,13 +166,11 @@ TEST(Network, GradientSingleNodeLayers)
     auto out = n.WeightGradient(input, input, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientMultipleNodeMultipleLayer)
-{
+TEST(Network, GradientMultipleNodeMultipleLayer) {
     const size_t num_layers = 4;
     Vs::Network n(3);
 
-    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++)
-    {
+    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++) {
         n.AddFullyConnectedLayer(3, Vs::ReLu);
     }
     n.SetUnityWeights();
@@ -196,8 +182,7 @@ TEST(Network, GradientMultipleNodeMultipleLayer)
     auto out = n.WeightGradient(input, 2 * input, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientBigHonkin)
-{
+TEST(Network, GradientBigHonkin) {
     const size_t honkin_size = 250;
     Vs::Network n(honkin_size);
     n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
@@ -215,27 +200,30 @@ TEST(Network, GradientBigHonkin)
     auto out = n.WeightGradient(input, 0.1 * input, Vs::SumOfSquaresObjective);
 }
 
-TEST(Network, GradientHandCalcChecks)
-{
+TEST(Network, GradientHandCalcChecks) {
     Vs::Network n(1);
     n.AddFullyConnectedLayer(2, Vs::ArgCubed);
     n.AddFullyConnectedLayer(2, Vs::ArgCubed);
     n.AddFullyConnectedLayer(2, Vs::ArgCubed);
 
-    auto calc_dels = [&n](Vs::IOVector &actual_outputs, Vs::IOVector &expected_outputs)
-    {
-        auto i_5 = n.GetWeightForConnection(3, 5) * actual_outputs[3] + n.GetWeightForConnection(4, 5) * actual_outputs[4];
-        auto i_6 = n.GetWeightForConnection(3, 6) * actual_outputs[3] + n.GetWeightForConnection(4, 6) * actual_outputs[4];
-        auto i_3 = n.GetWeightForConnection(1, 3) * actual_outputs[1] + n.GetWeightForConnection(2, 3) * actual_outputs[2];
-        Vs::FVal del_E_del_w_35 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 * actual_outputs[3];
-        Vs::FVal del_E_del_w_13 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 * (n.GetWeightForConnection(3, 5) * 3.0 * i_3 * i_3 * actual_outputs[1])
-            - 2.0 * (expected_outputs[1] - actual_outputs[6]) * (3.0 * i_6 * i_6) * (n.GetWeightForConnection(3, 6) * 3.0 * i_3 * i_3 * actual_outputs[1]);
+    auto calc_dels = [&n](Vs::IOVector &actual_outputs, Vs::IOVector &expected_outputs) {
+        auto i_5 =
+            n.GetWeightForConnection(3, 5) * actual_outputs[3] + n.GetWeightForConnection(4, 5) * actual_outputs[4];
+        auto i_6 =
+            n.GetWeightForConnection(3, 6) * actual_outputs[3] + n.GetWeightForConnection(4, 6) * actual_outputs[4];
+        auto i_3 =
+            n.GetWeightForConnection(1, 3) * actual_outputs[1] + n.GetWeightForConnection(2, 3) * actual_outputs[2];
+        Vs::FVal del_E_del_w_35 =
+            -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 * actual_outputs[3];
+        Vs::FVal del_E_del_w_13 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 *
+                                      (n.GetWeightForConnection(3, 5) * 3.0 * i_3 * i_3 * actual_outputs[1]) -
+                                  2.0 * (expected_outputs[1] - actual_outputs[6]) * (3.0 * i_6 * i_6) *
+                                      (n.GetWeightForConnection(3, 6) * 3.0 * i_3 * i_3 * actual_outputs[1]);
 
         return std::make_pair(del_E_del_w_13, del_E_del_w_35);
     };
 
-    auto test = [&n, &calc_dels](Vs::FVal in0, Vs::FVal out0, Vs::FVal out1)
-    {
+    auto test = [&n, &calc_dels](Vs::FVal in0, Vs::FVal out0, Vs::FVal out1) {
         Vs::IOVector input(1);
         input << in0;
         Vs::IOVector output(2);
@@ -259,16 +247,13 @@ TEST(Network, GradientHandCalcChecks)
     test(0.9, 2, 0.7);
     test(0.3, 0.0001, 0.0001);
 
-    auto rand_weights = [](size_t row, size_t col) {
-        return (std::rand() / static_cast<Vs::WVal>(RAND_MAX)) - 1.0;
-    };
+    auto rand_weights = [](size_t row, size_t col) { return (std::rand() / static_cast<Vs::WVal>(RAND_MAX)) - 1.0; };
     n.SetWeightsWith(rand_weights);
 
     test(1, 0, 0);
 }
 
-TEST(Network, MNISTFullyConnected)
-{
+TEST(Network, MNISTFullyConnected) {
     const size_t image_pixels = 28 * 28;
     Vs::Network n(image_pixels);
     n.AddFullyConnectedLayer(100, Vs::ReLu);
@@ -287,7 +272,8 @@ TEST(Network, MNISTFullyConnected)
     n.WeightGradient(input, expected_out, Vs::LogLossObjective);
 }
 
-template<typename T> void AssertVecEqual(std::vector<T> actual, std::vector<T> expected) {
+template <typename T>
+void AssertVecEqual(std::vector<T> actual, std::vector<T> expected) {
     GTEST_ASSERT_EQ(actual.size(), expected.size()) << "Vector sizes not equal";
 
     for (size_t idx = 0; idx < actual.size(); idx++) {
@@ -296,9 +282,9 @@ template<typename T> void AssertVecEqual(std::vector<T> actual, std::vector<T> e
 }
 
 TEST(Network, GetIncomingNodesFor) {
-    Vs::Network n(10);  // Input layer is 0-9
-    n.AddFullyConnectedLayer(2, Vs::ReLu); // Nodes 10 and 11
-    n.AddSoftMaxLayer(); // Nodes 12 and 13
+    Vs::Network n(10);                      // Input layer is 0-9
+    n.AddFullyConnectedLayer(2, Vs::ReLu);  // Nodes 10 and 11
+    n.AddSoftMaxLayer();                    // Nodes 12 and 13
 
     std::vector<size_t> node_0_to_9_incoming = {};
     std::vector<size_t> node_10_and_11_incoming = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -315,9 +301,9 @@ TEST(Network, GetIncomingNodesFor) {
 }
 
 TEST(Network, GetOutgoingNodesFor) {
-    Vs::Network n(10); // input layer is 0-9
-    n.AddFullyConnectedLayer(2, Vs::ReLu); // nodes 10 and 11
-    n.AddSoftMaxLayer(); // nodes 12 and 13
+    Vs::Network n(10);                      // input layer is 0-9
+    n.AddFullyConnectedLayer(2, Vs::ReLu);  // nodes 10 and 11
+    n.AddSoftMaxLayer();                    // nodes 12 and 13
 
     std::vector<size_t> node_0_to_9_outgoing = {10, 11};
     std::vector<size_t> node_12_and_13_outgoing = {};
@@ -339,8 +325,10 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSimple) {
     np->AddFullyConnectedLayer(4, Vs::Sigmoid);
     np->AddFullyConnectedLayer(2, Vs::Sigmoid);
 
-    Vs::IOVector input(1); input << 1.1;
-    Vs::IOVector output(2); output << 0, 0;
+    Vs::IOVector input(1);
+    input << 1.1;
+    Vs::IOVector output(2);
+    output << 0, 0;
     auto objective_fn = Vs::SumOfSquaresObjective;
     double param_step_size = 0.00001;
 
@@ -348,7 +336,11 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSimple) {
     Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
     std::cout << std::endl << "Top 10 Differences Of Analytic Vs Numerical" << std::endl;
-    Vs::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col){ std::stringstream ss; np->DescribeParamIdx(ss, row); return ss.str();});
+    Vs::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
+        std::stringstream ss;
+        np->DescribeParamIdx(ss, row);
+        return ss.str();
+    });
 
     GTEST_ASSERT_LE((analytic_gradient - numerical_gradient).norm(), 0.01);
 }
@@ -368,7 +360,8 @@ TEST(Network, AnalyticAndNumericalGradientsMatchBig) {
     };
 
     Vs::IOVector input = norm_dist_vec(10);
-    Vs::IOVector output(10); output << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    Vs::IOVector output(10);
+    output << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;
     auto objective_fn = Vs::SumOfSquaresObjective;
     double param_step_size = 0.00001;
 
@@ -376,7 +369,11 @@ TEST(Network, AnalyticAndNumericalGradientsMatchBig) {
     Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
     std::cout << std::endl << "Top 10 Differences Of Analytic Vs Numerical" << std::endl;
-    Vs::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col){ std::stringstream ss; np->DescribeParamIdx(ss, row); return ss.str();});
+    Vs::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
+        std::stringstream ss;
+        np->DescribeParamIdx(ss, row);
+        return ss.str();
+    });
 
     GTEST_ASSERT_LE((analytic_gradient - numerical_gradient).norm(), 0.01);
 }
@@ -396,8 +393,9 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSoftmaxAndLogLoss) {
         return vec;
     };
 
-    Vs::IOVector input = norm_dist_vec(5); // ; input << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
-    Vs::IOVector output(5); output << 1, 0, 0, 0, 0; // 0, 0, 0, 0, 0;
+    Vs::IOVector input = norm_dist_vec(5);  // ; input << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+    Vs::IOVector output(5);
+    output << 1, 0, 0, 0, 0;  // 0, 0, 0, 0, 0;
     auto objective_fn = Vs::LogLossObjective;
     double param_step_size = 0.00001;
 
@@ -405,7 +403,12 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSoftmaxAndLogLoss) {
     Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
     std::cout << std::endl << "Softmax(ReLu) layer differences:" << std::endl;
-    Vs::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1), analytic_gradient, numerical_gradient, [&np](size_t row, size_t col){ std::stringstream ss; np->DescribeParamIdx(ss, row); return ss.str();});
+    Vs::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1),
+                                     analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
+                                         std::stringstream ss;
+                                         np->DescribeParamIdx(ss, row);
+                                         return ss.str();
+                                     });
     GTEST_ASSERT_LE((analytic_gradient - numerical_gradient).norm(), 0.01);
 }
 
@@ -425,7 +428,8 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSimpleSoftMax) {
     };
 
     Vs::IOVector input = norm_dist_vec(2);
-    Vs::IOVector output(2); output << 1, 0;
+    Vs::IOVector output(2);
+    output << 1, 0;
     auto objective_fn = Vs::SumOfSquaresObjective;
     double param_step_size = 0.00001;
 
@@ -433,7 +437,11 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSimpleSoftMax) {
     Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
     std::cout << std::endl << "Softmax(ReLu) layer differences:" << std::endl;
-    Vs::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1), analytic_gradient, numerical_gradient, [&np](size_t row, size_t col){ std::stringstream ss; np->DescribeParamIdx(ss, row); return ss.str();});
+    Vs::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1),
+                                     analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
+                                         std::stringstream ss;
+                                         np->DescribeParamIdx(ss, row);
+                                         return ss.str();
+                                     });
     GTEST_ASSERT_LE((analytic_gradient - numerical_gradient).norm(), 0.01);
-
 }

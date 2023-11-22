@@ -1,10 +1,9 @@
-#include "gtest/gtest.h"
-
-#include "mnist.hpp"
-
 #include <cstdlib>
-#include <tuple>
 #include <fstream>
+#include <tuple>
+
+#include "gtest/gtest.h"
+#include "mnist.hpp"
 
 TEST(MNISTLoader, LoadingWorks) {
     std::string mnist_labels_path = "", mnist_images_path = "";
@@ -15,7 +14,6 @@ TEST(MNISTLoader, LoadingWorks) {
     if (std::getenv("VS_MNIST_IMAGES_PATH")) {
         mnist_images_path = std::string(std::getenv("VS_MNIST_IMAGES_PATH"));
     }
-
 
     if (mnist_labels_path == "") {
         std::string possible_label_build_path = VS_CMAKE_BUILD_ROOT "/data/train-labels.idx1-ubyte";
@@ -36,7 +34,8 @@ TEST(MNISTLoader, LoadingWorks) {
     }
 
     if (mnist_labels_path == "" || mnist_images_path == "") {
-        std::cout << "Both VS_MNIST_LABELS_PATH and VS_MNIST_IMAGES_PATH must be defined to run the MNIST Loader tests." << std::endl;
+        std::cout << "Both VS_MNIST_LABELS_PATH and VS_MNIST_IMAGES_PATH must be defined to run the MNIST Loader tests."
+                  << std::endl;
         return;
     }
 

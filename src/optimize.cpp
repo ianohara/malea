@@ -1,9 +1,9 @@
+#include "optimize.hpp"
+
 #include <iostream>
 
-#include "cxxopts.hpp"
 #include "Eigen/Core"
-
-#include "optimize.hpp"
+#include "cxxopts.hpp"
 
 int main(int arg_count, char** args) {
     Eigen::Matrix<double, 10, 10> a_mat;

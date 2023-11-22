@@ -6,6 +6,5 @@
 #include "Eigen/Core"
 
 namespace Vs {
-namespace Util {
-}
-}
+namespace Util {}
+}  // namespace Vs

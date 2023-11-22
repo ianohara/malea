@@ -1,8 +1,7 @@
-#include <memory>
 #include <iostream>
+#include <memory>
 
 #include "cxxopts.hpp"
-
 #include "network.hpp"
 #include "optimize.hpp"
 #include "util.hpp"
@@ -21,29 +20,27 @@ std::shared_ptr<Vs::Network> XORNetwork() {
 int main(int arg_count, char** args) {
     cxxopts::Options options("XOR Trainer", "XOR Network Training Tool");
 
-    options.add_options()
-        ("s,step_size", "The training step size (gradient multiplier).", cxxopts::value<double>()->default_value("0.001"))
-        ("b,beta_1", "Beta 1 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.9"))
-        ("B,beta_2", "Beta 2 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.999"))
-        ("e,epsilon", "Epsilon in the adam optimizer.", cxxopts::value<double>()->default_value("1e-8"))
-        ("c,epoch_count", "Epochs to train for.", cxxopts::value<size_t>()->default_value("1000"))
-        ("h,help", "Print this help message");
+    options.add_options()("s,step_size", "The training step size (gradient multiplier).",
+                          cxxopts::value<double>()->default_value("0.001"))(
+        "b,beta_1", "Beta 1 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.9"))(
+        "B,beta_2", "Beta 2 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.999"))(
+        "e,epsilon", "Epsilon in the adam optimizer.", cxxopts::value<double>()->default_value("1e-8"))(
+        "c,epoch_count", "Epochs to train for.", cxxopts::value<size_t>()->default_value("1000"))(
+        "h,help", "Print this help message");
 
     auto result = options.parse(arg_count, args);
-    auto dbl_opt = [&result](std::string opt) -> double {
-        return result[opt].as<double>();
-    };
+    auto dbl_opt = [&result](std::string opt) -> double { return result[opt].as<double>(); };
 
     if (result.count("help") > 0) {
         std::cout << options.help() << std::endl;
         std::exit(0);
     }
 
-
     std::cout << "Building XOR Network..." << std::endl;
     auto xor_network = XORNetwork();
 
-    Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"), xor_network->GetOptimizedParamsCount());
+    Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"),
+                                xor_network->GetOptimizedParamsCount());
 
     Vs::ParamVector current_params(xor_network->GetOptimizedParamsCount());
     current_params << xor_network->GetOptimizedParams();
@@ -51,14 +48,11 @@ int main(int arg_count, char** args) {
     size_t epochs_to_train = result["epoch_count"].as<size_t>();
     // Setup epoch data so that each column contains the inputs in rows 0 and 1, and the expected result in row 3.
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> epoch_data(3, 4);
-    epoch_data <<
-        1, 0, 1, 0,
-        1, 1, 0, 0,
-        0, 1, 1, 0;
+    epoch_data << 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0;
 
     epoch_data = epoch_data.reshaped(3, 4);
 
-    const size_t samples_per_epoch =  epoch_data.cols();
+    const size_t samples_per_epoch = epoch_data.cols();
     Vs::GradVector epoch_gradient(current_params.rows());
     double epoch_error;
 
@@ -80,7 +74,8 @@ int main(int arg_count, char** args) {
             Vs::IOVector input = epoch_data(Eigen::seq(0, 1), sample_idx).array() - 0.5;
             Vs::IOVector expected_output = epoch_data(Eigen::seq(2, 2), sample_idx).array() - 0.5;
 
-            Vs::GradVector sample_gradient = xor_network->WeightGradient(input, expected_output, Vs::SumOfSquaresObjective);
+            Vs::GradVector sample_gradient =
+                xor_network->WeightGradient(input, expected_output, Vs::SumOfSquaresObjective);
             // std::cout << "  sample_gradient norm is " << sample_gradient.norm() << std::endl;
             epoch_gradient += sample_gradient;
             // TODO(imo): Make gradient return apply too so we don't need to double do this...
@@ -89,10 +84,10 @@ int main(int arg_count, char** args) {
             double sample_error = Vs::SumOfSquaresObjective->Apply(prediction_vector, expected_output);
             epoch_error += sample_error;
             std::cout << "  Sample " << sample_idx << ":" << std::endl
-                << "    Input        : " << input.transpose() << std::endl
-                << "    Expected Out : " << expected_output << std::endl
-                << "    Predicted Out: " << prediction_vector << std::endl
-                << "    Sample Error : " << sample_error << std::endl;
+                      << "    Input        : " << input.transpose() << std::endl
+                      << "    Expected Out : " << expected_output << std::endl
+                      << "    Predicted Out: " << prediction_vector << std::endl
+                      << "    Sample Error : " << sample_error << std::endl;
         }
 
         std::cout << "  Done epoch " << epoch << " with error=" << epoch_error << "..." << std::endl;

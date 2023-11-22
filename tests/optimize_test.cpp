@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
-
 #include "optimize.hpp"
+
+#include "gtest/gtest.h"
 #include "util.hpp"
 
 TEST(Optimize, BasicWorking) {
@@ -30,7 +30,7 @@ TEST(Optimize, DISABLED_RastriginFunction) {
     gradient.fill(0);
 
     auto rastrigin_apply = [&](Vs::ParamVector args) -> double {
-        return A * dims + (args.array()*args.array() - A*Eigen::cos(2 * M_PI * args.array())).sum();
+        return A * dims + (args.array() * args.array() - A * Eigen::cos(2 * M_PI * args.array())).sum();
     };
 
     auto rastragin_gradient = [&](Vs::ParamVector args) -> Vs::ParamVector {
@@ -43,6 +43,7 @@ TEST(Optimize, DISABLED_RastriginFunction) {
         Vs::ParamVector gradient = rastragin_gradient(current);
         current = optimizer.Step(current, gradient);
         step_count++;
-        GTEST_ASSERT_TRUE(step_count < 2000) << "The optimizer should converge in less than 2000 (arbitrary) steps on the 9 dimensional Rastrigin Function.";
+        GTEST_ASSERT_TRUE(step_count < 2000) << "The optimizer should converge in less than 2000 (arbitrary) steps on "
+                                                "the 9 dimensional Rastrigin Function.";
     }
 }
