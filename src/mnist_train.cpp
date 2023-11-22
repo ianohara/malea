@@ -10,16 +10,15 @@ int main(int arg_count, char** args) {
 
     options.add_options()("l,labels", "The training labels file.", cxxopts::value<std::string>())(
         "i,images", "The training images file.", cxxopts::value<std::string>())(
-        "s,step_size", "The training step size (gradient multiplier).",
-        cxxopts::value<double>()->default_value("0.001"))("b,beta_1", "Beta 1 in the Adam Optimizer",
-                                                          cxxopts::value<double>()->default_value("0.9"))(
+        "s,step_size", "The training step size (gradient multiplier).", cxxopts::value<double>()->default_value("0.001"))(
+        "b,beta_1", "Beta 1 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.9"))(
         "B,beta_2", "Beta 2 in the Adam Optimizer", cxxopts::value<double>()->default_value("0.999"))(
         "e,epsilon", "Epsilon in the adam optimizer.", cxxopts::value<double>()->default_value("1e-8"))(
         "c,batch_size", "Number of training samples per gradient step", cxxopts::value<size_t>()->default_value("10"))(
         "m,mini", "Use the mini network (for debugging)", cxxopts::value<bool>()->default_value("false"))(
         "h,help", "Print this help message")(
-        "l,load", "File to load starting parameters from", cxxopts::value<std::string>())(
-        "o,out", "File to write params to after each batch", cxxopts::value<std::string>()->default_value("/tmp/mnist_params.bin"));
+        "load", "File to load starting parameters from", cxxopts::value<std::string>())(
+        "out", "File to write params to after each batch", cxxopts::value<std::string>()->default_value("/tmp/mnist_params.bin"));
 
     auto result = options.parse(arg_count, args);
     auto dbl_opt = [&result](std::string opt) -> double { return result[opt].as<double>(); };
