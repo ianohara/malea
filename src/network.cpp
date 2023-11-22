@@ -86,7 +86,7 @@ void Network::ResizeForNodeCount(size_t old_count, size_t new_count) {
 }
 
 IOVector Network::Apply(IOVector input) {
-    assert(input.rows() == GetLayerNodeCount(0));
+    assert(input.rows() == static_cast<ssize_t>(GetLayerNodeCount(0)));
 
     for (size_t layer_idx = 0; layer_idx < GetLayerCount(); layer_idx++) {
         IOVector layer_inputs = layer_idx == 0 ? input : GetLayerInputs(layer_idx);
@@ -198,8 +198,6 @@ GradVector Network::WeightGradient(IOVector input, IOVector expected_output,
     // TODO(imo): Remove this zeroing; it is just for debug.
     std::fill(del_objective_del_node_input.begin(), del_objective_del_node_input.end(), 0.0);
 
-    auto vec_string = [](IOVector vec) { return vec.transpose(); };
-
     // In the last layer, we special case for the derivative of the objective function wrt
     // its input arg (versus just the activation function).
     const size_t last_layer_idx = GetLayerCount() - 1;
@@ -210,9 +208,8 @@ GradVector Network::WeightGradient(IOVector input, IOVector expected_output,
 
     // NOTE(imo): Layer 0 doesn't have any weights associated with it, so we can skip it and only
     //   go down to layer 1.
-    for (int layer_id = last_layer_idx; layer_id >= 1; layer_id--) {
+    for (size_t layer_id = last_layer_idx; layer_id >= 1; layer_id--) {
         IOVector layer_inputs = GetLayerInputs(layer_id);
-        BVal bias_grad_accum = 0;
 
         // Jacobian of activations is: N x N where N is the number of nodes in the current layer_id layer
         const Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> activation_jacobian =
@@ -234,11 +231,6 @@ GradVector Network::WeightGradient(IOVector input, IOVector expected_output,
         }
 
         const IOVector this_layer_derivs = activation_jacobian * previous_layer_derivs;
-
-        // std::cout << "For  layer " << layer_id << ":" << std::endl
-        //     << "activation_jacobian   : " << std::endl << activation_jacobian << std::endl
-        //     << "previous_layer_derivs : " << std::endl << previous_layer_derivs << std::endl
-        //     << "this_layer_derivs     : " << std::endl << this_layer_derivs << std::endl << std::endl;
 
         if (biases.count(layer_id)) {
             // For biases, the "incoming" node value is 1 since it looks like a connection from a node with constant
@@ -292,7 +284,7 @@ Vs::GradVector CalculateNumericalGradient(const std::shared_ptr<Vs::Network> net
         return result;
     };
 
-    for (size_t dim_idx = 0; dim_idx < starting_params.rows(); dim_idx++) {
+    for (ssize_t dim_idx = 0; dim_idx < starting_params.rows(); dim_idx++) {
         const Vs::IOVector from_params = set_one_coeff(dim_idx, -param_step_size);
         const Vs::IOVector to_params = set_one_coeff(dim_idx, param_step_size);
 

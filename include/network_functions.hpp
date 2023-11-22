@@ -22,7 +22,7 @@ class _ReLuImpl : public ActivationFunction {
         Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> J(node_inputs.size(), node_inputs.size());
         J.fill(0);
 
-        for (size_t idx = 0; idx < node_inputs.size(); idx++) {
+        for (ssize_t idx = 0; idx < node_inputs.size(); idx++) {
             J(idx, idx) = node_inputs(idx) <= 0.0 ? 0.0 : 1;
         }
 
@@ -50,7 +50,7 @@ class _ArgCubedImpl : public ActivationFunction {
     Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> Jacobian(const IOVector& node_inputs) override {
         Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> J(node_inputs.size(), node_inputs.size());
         J.fill(0);
-        for (size_t idx = 0; idx < node_inputs.size(); idx++) {
+        for (ssize_t idx = 0; idx < node_inputs.size(); idx++) {
             J(idx, idx) = 3.0 * std::pow(node_inputs(idx), 2);
         }
 
@@ -69,7 +69,7 @@ class _SigmoidImpl : public ActivationFunction {
     Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> Jacobian(const IOVector& node_inputs) override {
         Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> J(node_inputs.size(), node_inputs.size());
         J.fill(0);
-        for (size_t idx = 0; idx < node_inputs.size(); idx++) {
+        for (ssize_t idx = 0; idx < node_inputs.size(); idx++) {
             auto apply = Apply(idx, node_inputs);
             J(idx, idx) = apply * (1.0 - apply);
         }
@@ -98,14 +98,14 @@ class _SoftMaxImpl : public ActivationFunction {
     Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> Jacobian(const IOVector& node_inputs) override {
         IOVector partial_derivs(node_inputs.size());
         IOVector all_applied(node_inputs.size());
-        for (size_t idx = 0; idx < node_inputs.size(); idx++) {
+        for (ssize_t idx = 0; idx < node_inputs.size(); idx++) {
             all_applied(idx) = Apply(idx, node_inputs);
         }
 
         Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> J(node_inputs.size(), node_inputs.size());
 
-        for (size_t idx_i = 0; idx_i < node_inputs.size(); idx_i++) {
-            for (size_t idx_j = 0; idx_j < node_inputs.rows(); idx_j++) {
+        for (ssize_t idx_i = 0; idx_i < node_inputs.size(); idx_i++) {
+            for (ssize_t idx_j = 0; idx_j < node_inputs.rows(); idx_j++) {
                 if (idx_i == idx_j) {
                     // Use idx and node_idx in this expression (even though equal!) just to denote that
                     // we're doing a partial derivative wrt node_idx, and this is the partial when the
@@ -126,83 +126,6 @@ class _SoftMaxImpl : public ActivationFunction {
 
     std::string Describe() override { return "SoftMaxActivation"; }
 };
-
-// class _SoftMaxFullImpl : public ActivationFunction {
-//     const std::shared_ptr<ActivationFunction> _incoming_fn;
-// public:
-//     _SoftMaxFullImpl(std::shared_ptr<ActivationFunction> incoming_fn) : _incoming_fn(incoming_fn) {}
-
-//     FVal Apply(size_t node_idx, const IOVector& node_inputs) override {
-//         IOVector all_applied(node_inputs.rows());
-//         for (size_t idx = 0; idx < node_inputs.rows(); idx++) {
-//             all_applied(idx) = _incoming_fn->Apply(idx, node_inputs);
-//         }
-
-//         // To avoid overflow, use the softmax(x) = softmax(x + c) identity where
-//         // c is some constant.
-//         //
-//         // You can prove this by using the fact that any y^(a+b) = y^a * y^b and the
-//         // fact that you can factor constants out of summations.
-//         FVal applied_input_max = all_applied.maxCoeff();
-//         const auto e = std::exp(1);
-//         const auto numerator = Eigen::pow(e, all_applied.array() - applied_input_max);
-//         FVal denom = numerator.sum();
-//         return numerator(node_idx) / denom;
-//     }
-
-//     Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> Jacobian(size_t node_idx, const IOVector& node_inputs)
-//     override {
-//         IOVector partial_derivs(node_inputs.rows());
-//         IOVector incoming_fn_derivs(node_inputs.rows());
-//         IOVector all_applied(node_inputs.rows());
-//         for (size_t idx = 0; idx < node_inputs.rows(); idx++) {
-//             all_applied(idx) = Apply(idx, node_inputs);
-//         }
-//         Eigen::Matrix<BVal, Eigen::Dynamic, Eigen::Dynamic> J(node_inputs.size(), node_inputs.size());
-//         J.fill(0);
-//         for (size_t idx_i = 0; idx_i < node_inputs.size(); idx_i++) {
-//             for (size_t idx_j = 0; idx_j < node_inputs.rows(); idx_j++) {
-//                 incoming_fn_derivs(idx_j) = _incoming_fn->Derivative(idx_j, node_inputs);
-//                 auto apply_i = all_applied(node_idx);
-//                 auto apply_j = all_applied(idx_j);
-//                 if (node_idx == idx_j) {
-//                     // Use idx and node_idx in this expression (even though equal!) just to denote that
-//                     // we're doing a partial derivative wrt node_idx, and this is the partial when the
-//                     // component index is the same as node_idx.
-//                     //
-//                     // There are a bunch of articles on this, or you can just do it by hand, but I think
-//                     // I like this article best:
-//                     https://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/ partial_derivs(idx_j)
-//                     = apply_i * (1 - apply_j);
-//                 } else {
-//                     partial_derivs(idx_j) = -apply_i * apply_j;
-//                 }
-//             }
-//         }
-
-//         // NOTE(imo): I don't think this is right, but am just plowing forward for now.  This is just the partial
-//         // derivative of the softmax with respect to this node.  I guess it could make sense because the combinations
-//         // are done elsewhere, but it still seems odd that the effect of other node's are not accounted for at each
-//         // softmax node's deriv.
-//         IOVector dot_prod_results = (partial_derivs.array() * incoming_fn_derivs.array() * all_applied.array() /
-//         all_applied(node_idx)); std::cout
-//             << "For node inputs        : " << node_inputs.transpose() << std::endl
-//             << "  and applied inputs   : " << all_applied.transpose() << std::endl
-//             << "  partials are         :" << partial_derivs.transpose() << std::endl
-//             << "  sum of partials is   : " << partial_derivs.sum() << std::endl
-//             << "  incoming fn derivs is: " << incoming_fn_derivs.transpose() << std::endl
-//             << "  dot_prod_results is  : " << dot_prod_results.transpose() << std::endl;
-
-//         return dot_prod_results.sum();
-//     }
-
-//     std::string Describe() override {
-//         std::stringstream ss;
-//         ss << "SoftMax(" << _incoming_fn->Describe() << ")";
-
-//         return ss.str();
-//     }
-// };
 
 class ObjectiveFunction {
    public:

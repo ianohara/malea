@@ -216,7 +216,7 @@ class Network {
     }
 
     void SetOptimizedParams(Eigen::Matrix<WVal, Eigen::Dynamic, 1> new_params) {
-        assert((GetOptimizedParamsCount()) == new_params.size());
+        assert(static_cast<ssize_t>(GetOptimizedParamsCount()) == new_params.size());
         // TODO(imo): Make this more efficient...
         size_t count = 0;
         for (auto [from_idx, to_map] : weights) {
@@ -285,8 +285,8 @@ class Network {
 
         auto non_zero_bias_count = [](const Eigen::Matrix<FVal, Eigen::Dynamic, Eigen::Dynamic> m) {
             size_t non_zero_count = 0;
-            for (size_t row = 0; row < m.rows(); row++) {
-                for (size_t col = 0; col < m.cols(); col++) {
+            for (ssize_t row = 0; row < m.rows(); row++) {
+                for (ssize_t col = 0; col < m.cols(); col++) {
                     if (std::abs(m(row, col)) > 0.00001) {
                         non_zero_count++;
                     }
@@ -306,8 +306,8 @@ class Network {
 
         auto n_vals = [](Eigen::Matrix<FVal, Eigen::Dynamic, Eigen::Dynamic> m, size_t n, bool min) {
             std::vector<BVal> all_vals;
-            for (size_t row = 0; row < m.rows(); row++) {
-                for (size_t col = 0; col < m.cols(); col++) {
+            for (ssize_t row = 0; row < m.rows(); row++) {
+                for (ssize_t col = 0; col < m.cols(); col++) {
                     all_vals.push_back(m(row, col));
                 }
             }
@@ -342,7 +342,7 @@ class Network {
     void SummarizeParamGradient(std::ostream &stream, const IOVector &gradient) {
         auto n_vals = [&gradient](size_t n, bool min) {
             std::vector<BVal> all_vals;
-            for (size_t row = 0; row < gradient.rows(); row++) {
+            for (ssize_t row = 0; row < gradient.rows(); row++) {
                 all_vals.push_back(gradient(row));
             }
 

@@ -29,9 +29,9 @@ TEST(Optimize, DISABLED_RastriginFunction) {
     Vs::ParamVector gradient(dims);
     gradient.fill(0);
 
-    auto rastrigin_apply = [&](Vs::ParamVector args) -> double {
-        return A * dims + (args.array() * args.array() - A * Eigen::cos(2 * M_PI * args.array())).sum();
-    };
+    // auto rastrigin_apply = [&](Vs::ParamVector args) -> double {
+    //     return A * dims + (args.array() * args.array() - A * Eigen::cos(2 * M_PI * args.array())).sum();
+    // };
 
     auto rastragin_gradient = [&](Vs::ParamVector args) -> Vs::ParamVector {
         Vs::ParamVector gradient = 2 * args.array() + 2 * M_PI * A * Eigen::sin(2 * M_PI * args.array());

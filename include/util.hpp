@@ -43,7 +43,6 @@ T RandInGaussian(T mean, T std) {
         return std::sqrt(-2 * std::log(rand_1)) * std::cos(2 * M_PI * rand_2);
     };
 
-    auto norm_dist_val = box_mueller();
     T final_val = mean + std * box_mueller();
     return final_val;
 }
@@ -95,8 +94,8 @@ void TopTenDifferences(std::ostream &os, Eigen::Matrix<T, R, C> &m, Eigen::Matri
                        std::function<std::string(size_t, size_t)> describer) {
     const size_t count = 90;
     std::vector<std::tuple<T, std::string, T>> vals_and_coords;
-    for (size_t row = 0; row < m.rows(); row++) {
-        for (size_t col = 0; col < m.cols(); col++) {
+    for (ssize_t row = 0; row < m.rows(); row++) {
+        for (ssize_t col = 0; col < m.cols(); col++) {
             vals_and_coords.push_back(std::make_tuple(m(row, col), describer(row, col), other(row, col)));
         }
     }

@@ -7,8 +7,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "CImg.h"
-
 namespace Vs {
 // Load the labels file into the internal labels (0-9 values only) vector.
 //
@@ -31,7 +29,7 @@ void MNISTLoader::LoadLabels(const std::string &path) {
         std::copy(std::istreambuf_iterator<char>(in_file), std::istreambuf_iterator<char>(),
                   std::back_inserter(_labels));
 
-        assert(_labels.size() == size);
+        assert(static_cast<int>(_labels.size()) == size);
     } else {
         throw std::runtime_error(path);
     }
@@ -72,13 +70,15 @@ void MNISTLoader::LoadImages(const std::string &path) {
 }
 
 void MNISTLoader::WriteToDirectory(const std::string &path) {
+    throw std::runtime_error("Unimplemented");
+
     std::filesystem::directory_entry root_dir{path};
 
     if (!root_dir.exists()) {
         throw std::runtime_error("Cannot open directory for writing MNIST images");
     }
 
-    for (size_t label = 0; label < 10; label++) {
+    for (size_t label = 0; label < 10u; label++) {
         std::stringstream ss;
         ss << path << "/" << label;
         std::string this_label_out_dir = ss.str();
@@ -87,13 +87,13 @@ void MNISTLoader::WriteToDirectory(const std::string &path) {
         }
 
         for (size_t label_idx = 0; label_idx < _labels.size(); label_idx++) {
-            if (_labels[label_idx] == label) {
+            if (static_cast<size_t>(_labels[label_idx]) == label) {
                 auto image_data = _images[label_idx];
                 std::stringstream out_path_stream;
                 out_path_stream << this_label_out_dir << "/" << label_idx << ".bmp";
                 std::string out_path = out_path_stream.str();
-                cimg_library::CImg<double> img(image_data.data(), image_data.cols(), image_data.rows(), 1);
-                img.save(out_path.c_str());
+                // cimg_library::CImg<double> img(image_data.data(), image_data.cols(), image_data.rows(), 1);
+                // img.save(out_path.c_str());
             }
         }
     }

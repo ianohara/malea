@@ -4,6 +4,7 @@ project(view-synth LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-Wall -Werror")
 
 add_subdirectory("third-party")
 
@@ -20,15 +21,9 @@ add_library(vs_network src/network.cpp)
 target_include_directories(vs_network PRIVATE ${VS_INCLUDE_DIRECTORIES})
 target_link_libraries(vs_network PRIVATE Eigen3::Eigen vs_util)
 
-# NOTE(imo): X11 is only for the Cimg library.  Should get rid of CImg...
-find_package(X11 REQUIRED)
-if (NOT X11_FOUND)
-    error("Could not find X11")
-endif()
-
 add_library(vs_mnist src/mnist.cpp)
 target_include_directories(vs_mnist PRIVATE ${VS_INCLUDE_DIRECTORIES})
-target_link_libraries(vs_mnist PRIVATE Eigen3::Eigen CImg ${X11_LIBRARIES} vs_network)
+target_link_libraries(vs_mnist PRIVATE Eigen3::Eigen ${X11_LIBRARIES} vs_network)
 
 add_library(vs_optimize src/optimize.cpp)
 target_include_directories(vs_optimize PRIVATE ${VS_INCLUDE_DIRECTORIES})

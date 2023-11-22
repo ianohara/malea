@@ -155,7 +155,7 @@ TEST(Network, GradientSingleNodeLayers) {
     const size_t num_layers = 4;
     Vs::Network n(1);
 
-    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++) {
+    for (size_t layer_idx = 0; layer_idx < num_layers; layer_idx++) {
         n.AddFullyConnectedLayer(1, Vs::ReLu);
     }
     n.SetUnityWeights();
@@ -170,7 +170,7 @@ TEST(Network, GradientMultipleNodeMultipleLayer) {
     const size_t num_layers = 4;
     Vs::Network n(3);
 
-    for (auto layer_idx = 0; layer_idx < num_layers; layer_idx++) {
+    for (size_t layer_idx = 0; layer_idx < num_layers; layer_idx++) {
         n.AddFullyConnectedLayer(3, Vs::ReLu);
     }
     n.SetUnityWeights();
