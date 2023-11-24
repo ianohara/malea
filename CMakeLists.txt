@@ -37,10 +37,6 @@ add_executable(mnist_evaluate src/mnist_evaluate.cpp)
 target_include_directories(mnist_evaluate PRIVATE ${VS_INCLUDE_DIRECTORIES})
 target_link_libraries(mnist_evaluate PRIVATE Eigen3::Eigen cxxopts::cxxopts vs_network vs_mnist)
 
-add_executable(xor_train src/xor_train.cpp)
-target_include_directories(xor_train PRIVATE ${VS_INCLUDE_DIRECTORIES})
-target_link_libraries(xor_train PRIVATE Eigen3::Eigen cxxopts::cxxopts vs_network vs_util)
-
 if (NOT DEFINED VS_ENABLE_TESTS)
     set(VS_ENABLE_TESTS TRUE)
 endif()
