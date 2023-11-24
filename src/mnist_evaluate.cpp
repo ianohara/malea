@@ -1,5 +1,5 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 #include "cxxopts.hpp"
 #include "mnist.hpp"
@@ -11,9 +11,10 @@ int main(int arg_count, char** args) {
     options.add_options()("l,labels", "The test labels file.", cxxopts::value<std::string>())(
         "i,images", "The test images file.", cxxopts::value<std::string>())(
         "m,mini", "Use the mini network (for debugging)", cxxopts::value<bool>()->default_value("false"))(
-        "h,help", "Print this help message")(
-        "load", "File to load starting parameters from", cxxopts::value<std::string>())(
-        "c,count", "How many test samples to test before calculating stats and quitting.", cxxopts::value<size_t>()->default_value("0"));
+        "h,help", "Print this help message")("load", "File to load starting parameters from",
+                                             cxxopts::value<std::string>())(
+        "c,count", "How many test samples to test before calculating stats and quitting.",
+        cxxopts::value<size_t>()->default_value("0"));
 
     auto result = options.parse(arg_count, args);
 
@@ -76,7 +77,8 @@ int main(int arg_count, char** args) {
         size_t max_element_idx = std::distance(prediction_vector.begin(), max_element_iterator);
 
         correct_classificiations.push_back(max_element_idx == this_label);
-        std::cout << "Sample " << training_idx << " guess==actual  " << max_element_idx << "==" << this_label << " " << correct_classificiations[training_idx] << std::endl;
+        std::cout << "Sample " << training_idx << " guess==actual  " << max_element_idx << "==" << this_label << " "
+                  << correct_classificiations[training_idx] << std::endl;
     }
 
     double correct_count = 0.0;
@@ -86,7 +88,11 @@ int main(int arg_count, char** args) {
         }
     }
 
-    std::cout << std::endl << std::endl << "After " << correct_classificiations.size() << " tests, " << correct_count << " were correct.  Success % = " << 100.0 * correct_count/static_cast<double>(correct_classificiations.size()) << std::endl;
+    std::cout << std::endl
+              << std::endl
+              << "After " << correct_classificiations.size() << " tests, " << correct_count
+              << " were correct.  Success % = "
+              << 100.0 * correct_count / static_cast<double>(correct_classificiations.size()) << std::endl;
 
     return 0;
 }
