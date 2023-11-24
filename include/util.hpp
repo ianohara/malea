@@ -48,7 +48,7 @@ T RandInGaussian(T mean, T std) {
 }
 
 template <typename T, int R, int C>
-void TopTenStream(std::ostream &os, Eigen::Matrix<T, R, C> m) {
+void TopTenStream(std::ostream &os, const Eigen::Matrix<T, R, C>& m) {
     const size_t count = 10;
     std::vector<std::tuple<T, std::string>> vals_and_coords;
     for (size_t row = 0; row < m.rows(); row++) {
@@ -69,7 +69,7 @@ void TopTenStream(std::ostream &os, Eigen::Matrix<T, R, C> m) {
 }
 
 template <typename T, int R, int C>
-void CompareTopTen(std::ostream &os, Eigen::Matrix<T, R, C> &m, Eigen::Matrix<T, R, C> &other) {
+void CompareTopTen(std::ostream &os, const Eigen::Matrix<T, R, C> &m, const Eigen::Matrix<T, R, C> &other) {
     const size_t count = 10;
     std::vector<std::tuple<T, std::string, T>> vals_and_coords;
     for (size_t row = 0; row < m.rows(); row++) {
@@ -90,7 +90,7 @@ void CompareTopTen(std::ostream &os, Eigen::Matrix<T, R, C> &m, Eigen::Matrix<T,
 }
 
 template <typename T, int R, int C>
-void TopTenDifferences(std::ostream &os, Eigen::Matrix<T, R, C> &m, Eigen::Matrix<T, R, C> &other,
+void TopTenDifferences(std::ostream &os, const Eigen::Matrix<T, R, C> &m, const Eigen::Matrix<T, R, C> &other,
                        std::function<std::string(size_t, size_t)> describer) {
     const size_t count = 90;
     std::vector<std::tuple<T, std::string, T>> vals_and_coords;
@@ -110,8 +110,8 @@ void TopTenDifferences(std::ostream &os, Eigen::Matrix<T, R, C> &m, Eigen::Matri
     }
 }
 template <typename T, int R>
-void DifferencesForIndicies(std::ostream &os, const std::vector<size_t> &indicies, Eigen::Matrix<T, R, 1> &m,
-                            Eigen::Matrix<T, R, 1> &other, std::function<std::string(size_t, size_t)> describer) {
+void DifferencesForIndicies(std::ostream &os, const std::vector<size_t> &indicies, const Eigen::Matrix<T, R, 1> &m,
+                            const Eigen::Matrix<T, R, 1> &other, std::function<std::string(size_t, size_t)> describer) {
     for (size_t idx : indicies) {
         T val = m(idx);
         T other_val = other(idx);

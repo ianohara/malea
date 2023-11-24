@@ -20,7 +20,8 @@ int main(int arg_count, char** args) {
         "h,help", "Print this help message")("load", "File to load starting parameters from",
                                              cxxopts::value<std::string>())(
         "out", "File to write params to after each batch",
-        cxxopts::value<std::string>()->default_value("/tmp/mnist_params.bin"));
+        cxxopts::value<std::string>()->default_value("/tmp/mnist_params.bin"))
+        ("stop_at", "Stop after this many samples have been trained on", cxxopts::value<size_t>()->default_value("0"));
 
     auto result = options.parse(arg_count, args);
     auto dbl_opt = [&result](std::string opt) -> double { return result[opt].as<double>(); };
@@ -55,6 +56,7 @@ int main(int arg_count, char** args) {
 
     const size_t batch_size = result["batch_size"].as<size_t>();
     const size_t training_count = mnist_training_data.Count();
+    const size_t stop_after_n_samples = result["stop_at"].as<size_t>();
 
     Vs::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
     current_params << mnist_network->GetOptimizedParams();
@@ -65,6 +67,10 @@ int main(int arg_count, char** args) {
     batch_gradient.fill(0);
     auto objective_fn = Vs::LogLossObjective;
     for (size_t training_idx = 0; training_idx < training_count; training_idx++) {
+        if (stop_after_n_samples && training_idx > stop_after_n_samples) {
+            std::cout << "Trained against " << training_idx << " samples, stopping at user's request (--stop_at=" << stop_after_n_samples << ")" << std::endl;
+            break;
+        }
         // std::cout << "Loading training sample #" << training_idx << std::endl;
         auto [this_label, this_image] = mnist_training_data.GetSample(training_idx);
 

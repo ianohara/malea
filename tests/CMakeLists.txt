@@ -20,6 +20,7 @@ target_link_libraries(
     GTest::gtest_main
     Eigen3::Eigen
     vs_network
+    vs_network_functions
     vs_mnist
     vs_optimize
 )
