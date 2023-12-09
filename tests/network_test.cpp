@@ -5,30 +5,30 @@
 
 #include "gtest/gtest.h"
 
-static constexpr Vs::FVal NetEps = 0.0001;
+static constexpr Ml::FVal NetEps = 0.0001;
 
-namespace VsTest {
+namespace MlTest {
 static double RandInRange(double min, double max) {
     return min + (max - min) * (std::rand() / static_cast<double>(RAND_MAX));
 }
-}  // namespace VsTest
+}  // namespace MlTest
 
-TEST(Network, Create) { Vs::Network n(200); }
+TEST(Network, Create) { Ml::Network n(200); }
 
 TEST(Network, FullyConnected) {
-    Vs::Network n(5);
-    n.AddFullyConnectedLayer(3, Vs::ReLu);
-    n.AddFullyConnectedLayer(4, Vs::ReLu);
+    Ml::Network n(5);
+    n.AddFullyConnectedLayer(3, Ml::ReLu);
+    n.AddFullyConnectedLayer(4, Ml::ReLu);
 }
 
 TEST(Network, SingleNodePassThroughLayers) {
-    Vs::Network n(1);
-    n.AddFullyConnectedLayer(1, Vs::PassThrough);
-    n.AddFullyConnectedLayer(1, Vs::PassThrough);
-    n.AddFullyConnectedLayer(1, Vs::PassThrough);
+    Ml::Network n(1);
+    n.AddFullyConnectedLayer(1, Ml::PassThrough);
+    n.AddFullyConnectedLayer(1, Ml::PassThrough);
+    n.AddFullyConnectedLayer(1, Ml::PassThrough);
     n.SetUnityWeights();
 
-    Vs::IOVector input(1);
+    Ml::IOVector input(1);
     input << 101.1;
 
     auto node_outputs = n.Apply(input);
@@ -36,13 +36,13 @@ TEST(Network, SingleNodePassThroughLayers) {
 }
 
 TEST(Network, SingleNodeReLuLayers) {
-    Vs::Network n(1);
-    n.AddFullyConnectedLayer(1, Vs::ReLu);
-    n.AddFullyConnectedLayer(1, Vs::ReLu);
-    n.AddFullyConnectedLayer(1, Vs::ReLu);
+    Ml::Network n(1);
+    n.AddFullyConnectedLayer(1, Ml::ReLu);
+    n.AddFullyConnectedLayer(1, Ml::ReLu);
+    n.AddFullyConnectedLayer(1, Ml::ReLu);
     n.SetUnityWeights();
 
-    Vs::IOVector input(1);
+    Ml::IOVector input(1);
     input << -1.0;
 
     auto node_outputs = n.Apply(input);
@@ -54,14 +54,14 @@ TEST(Network, SingleNodeReLuLayers) {
 }
 
 TEST(Network, TwoNodePassThroughLayers) {
-    Vs::Network n(2);
-    n.AddFullyConnectedLayer(2, Vs::PassThrough);
-    n.AddFullyConnectedLayer(2, Vs::PassThrough);
-    n.AddFullyConnectedLayer(2, Vs::PassThrough);
-    n.AddFullyConnectedLayer(2, Vs::PassThrough);
+    Ml::Network n(2);
+    n.AddFullyConnectedLayer(2, Ml::PassThrough);
+    n.AddFullyConnectedLayer(2, Ml::PassThrough);
+    n.AddFullyConnectedLayer(2, Ml::PassThrough);
+    n.AddFullyConnectedLayer(2, Ml::PassThrough);
     n.SetUnityWeights();
 
-    Vs::IOVector input(2);
+    Ml::IOVector input(2);
 
     input << 1, 1;
     auto node_outputs = n.Apply(input);
@@ -70,17 +70,17 @@ TEST(Network, TwoNodePassThroughLayers) {
 
 TEST(Network, BigHonkerReLu) {
     const size_t honkin_size = 250;
-    Vs::Network n(honkin_size);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    Ml::Network n(honkin_size);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
     n.SetAllWeightsTo(1.0 / honkin_size);  // So each layer adds up to the previous output
 
-    Vs::IOVector input(honkin_size);
+    Ml::IOVector input(honkin_size);
     input.fill(123.0);
 
     auto node_outputs = n.Apply(input);
@@ -88,18 +88,18 @@ TEST(Network, BigHonkerReLu) {
 }
 
 TEST(Networm, SingleNodeSoftMax) {
-    Vs::Network n(1);
-    n.AddFullyConnectedLayer(1, Vs::ReLu);
+    Ml::Network n(1);
+    n.AddFullyConnectedLayer(1, Ml::ReLu);
     n.AddSoftMaxLayer();
     n.SetUnityWeights();
 
-    Vs::IOVector input(1);
+    Ml::IOVector input(1);
 
     // Regardless of input this should always come out of a single node softmax as 1.
-    Vs::IOVector expected(1);
+    Ml::IOVector expected(1);
     expected << 1.0;
     for (size_t i = 0; i < 10; i++) {
-        input << VsTest::RandInRange(-1e6, 1e6);
+        input << MlTest::RandInRange(-1e6, 1e6);
         auto all_output = n.Apply(input);
         auto output = n.OutputVectorFromNodeOutputs(all_output);
         ASSERT_NEAR(output(0), expected(0), NetEps) << "input=" << input.transpose() << " output=" << output.transpose()
@@ -108,10 +108,10 @@ TEST(Networm, SingleNodeSoftMax) {
 }
 
 TEST(Network, FiveNodeSoftMax) {
-    Vs::Network n(5);
+    Ml::Network n(5);
     n.AddSoftMaxLayer();
 
-    Vs::IOVector input(5), expected(5);
+    Ml::IOVector input(5), expected(5);
 
     auto check = [&]() {
         auto all_node_outputs = n.Apply(input);
@@ -139,83 +139,83 @@ TEST(Network, FiveNodeSoftMax) {
 }
 
 TEST(Network, GradientFiveNodeSoftMax) {
-    Vs::Network n(5);
-    n.AddFullyConnectedLayer(5, Vs::ReLu);
+    Ml::Network n(5);
+    n.AddFullyConnectedLayer(5, Ml::ReLu);
     n.AddSoftMaxLayer();
     n.SetUnityWeights();
 
-    Vs::IOVector input(5), expected(5);
+    Ml::IOVector input(5), expected(5);
     input << 0.1, 0.2, 0.3, 0.4, 0.5;
     expected << 0, 0, 0, 0, 1;
 
-    auto weight_gradient = n.WeightGradient(input, expected, Vs::SumOfSquaresObjective);
+    auto weight_gradient = n.WeightGradient(input, expected, Ml::SumOfSquaresObjective);
 }
 
 TEST(Network, GradientSingleNodeLayers) {
     const size_t num_layers = 4;
-    Vs::Network n(1);
+    Ml::Network n(1);
 
     for (size_t layer_idx = 0; layer_idx < num_layers; layer_idx++) {
-        n.AddFullyConnectedLayer(1, Vs::ReLu);
+        n.AddFullyConnectedLayer(1, Ml::ReLu);
     }
     n.SetUnityWeights();
 
-    Vs::IOVector input(1);
+    Ml::IOVector input(1);
     input.fill(1);
 
-    auto out = n.WeightGradient(input, input, Vs::SumOfSquaresObjective);
+    auto out = n.WeightGradient(input, input, Ml::SumOfSquaresObjective);
 }
 
 TEST(Network, GradientMultipleNodeMultipleLayer) {
     const size_t num_layers = 4;
-    Vs::Network n(3);
+    Ml::Network n(3);
 
     for (size_t layer_idx = 0; layer_idx < num_layers; layer_idx++) {
-        n.AddFullyConnectedLayer(3, Vs::ReLu);
+        n.AddFullyConnectedLayer(3, Ml::ReLu);
     }
     n.SetUnityWeights();
 
-    Vs::IOVector input(3);
+    Ml::IOVector input(3);
     input.fill(0.5);
 
     // Just make sure it runs!
-    auto out = n.WeightGradient(input, 2 * input, Vs::SumOfSquaresObjective);
+    auto out = n.WeightGradient(input, 2 * input, Ml::SumOfSquaresObjective);
 }
 
 TEST(Network, GradientBigHonkin) {
     const size_t honkin_size = 250;
-    Vs::Network n(honkin_size);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
-    n.AddFullyConnectedLayer(honkin_size, Vs::ReLu);
+    Ml::Network n(honkin_size);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
+    n.AddFullyConnectedLayer(honkin_size, Ml::ReLu);
 
-    auto input = Vs::IOVector(honkin_size);
+    auto input = Ml::IOVector(honkin_size);
     input.fill(1);
 
     // Just make sure it runs!
-    auto out = n.WeightGradient(input, 0.1 * input, Vs::SumOfSquaresObjective);
+    auto out = n.WeightGradient(input, 0.1 * input, Ml::SumOfSquaresObjective);
 }
 
 TEST(Network, GradientHandCalcChecks) {
-    Vs::Network n(1);
-    n.AddFullyConnectedLayer(2, Vs::ArgCubed);
-    n.AddFullyConnectedLayer(2, Vs::ArgCubed);
-    n.AddFullyConnectedLayer(2, Vs::ArgCubed);
+    Ml::Network n(1);
+    n.AddFullyConnectedLayer(2, Ml::ArgCubed);
+    n.AddFullyConnectedLayer(2, Ml::ArgCubed);
+    n.AddFullyConnectedLayer(2, Ml::ArgCubed);
 
-    auto calc_dels = [&n](Vs::IOVector &actual_outputs, Vs::IOVector &expected_outputs) {
+    auto calc_dels = [&n](Ml::IOVector &actual_outputs, Ml::IOVector &expected_outputs) {
         auto i_5 =
             n.GetWeightForConnection(3, 5) * actual_outputs[3] + n.GetWeightForConnection(4, 5) * actual_outputs[4];
         auto i_6 =
             n.GetWeightForConnection(3, 6) * actual_outputs[3] + n.GetWeightForConnection(4, 6) * actual_outputs[4];
         auto i_3 =
             n.GetWeightForConnection(1, 3) * actual_outputs[1] + n.GetWeightForConnection(2, 3) * actual_outputs[2];
-        Vs::FVal del_E_del_w_35 =
+        Ml::FVal del_E_del_w_35 =
             -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 * actual_outputs[3];
-        Vs::FVal del_E_del_w_13 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 *
+        Ml::FVal del_E_del_w_13 = -2.0 * (expected_outputs[0] - actual_outputs[5]) * 3.0 * i_5 * i_5 *
                                       (n.GetWeightForConnection(3, 5) * 3.0 * i_3 * i_3 * actual_outputs[1]) -
                                   2.0 * (expected_outputs[1] - actual_outputs[6]) * (3.0 * i_6 * i_6) *
                                       (n.GetWeightForConnection(3, 6) * 3.0 * i_3 * i_3 * actual_outputs[1]);
@@ -223,14 +223,14 @@ TEST(Network, GradientHandCalcChecks) {
         return std::make_pair(del_E_del_w_13, del_E_del_w_35);
     };
 
-    auto test = [&n, &calc_dels](Vs::FVal in0, Vs::FVal out0, Vs::FVal out1) {
-        Vs::IOVector input(1);
+    auto test = [&n, &calc_dels](Ml::FVal in0, Ml::FVal out0, Ml::FVal out1) {
+        Ml::IOVector input(1);
         input << in0;
-        Vs::IOVector output(2);
+        Ml::IOVector output(2);
         output << out0, out1;
 
         auto node_outputs = n.Apply(input);
-        auto gradient = n.WeightGradient(input, output, Vs::SumOfSquaresObjective);
+        auto gradient = n.WeightGradient(input, output, Ml::SumOfSquaresObjective);
 
         auto [del_E_del_w_13, del_E_del_w_35] = calc_dels(node_outputs, output);
 
@@ -247,7 +247,7 @@ TEST(Network, GradientHandCalcChecks) {
     test(0.9, 2, 0.7);
     test(0.3, 0.0001, 0.0001);
 
-    auto rand_weights = [](size_t row, size_t col) { return (std::rand() / static_cast<Vs::WVal>(RAND_MAX)) - 1.0; };
+    auto rand_weights = [](size_t row, size_t col) { return (std::rand() / static_cast<Ml::WVal>(RAND_MAX)) - 1.0; };
     n.SetWeightsWith(rand_weights);
 
     test(1, 0, 0);
@@ -255,21 +255,21 @@ TEST(Network, GradientHandCalcChecks) {
 
 TEST(Network, MNISTFullyConnected) {
     const size_t image_pixels = 28 * 28;
-    Vs::Network n(image_pixels);
-    n.AddFullyConnectedLayer(100, Vs::ReLu);
-    n.AddFullyConnectedLayer(100, Vs::ReLu);
-    n.AddFullyConnectedLayer(10, Vs::ReLu);
+    Ml::Network n(image_pixels);
+    n.AddFullyConnectedLayer(100, Ml::ReLu);
+    n.AddFullyConnectedLayer(100, Ml::ReLu);
+    n.AddFullyConnectedLayer(10, Ml::ReLu);
     n.AddSoftMaxLayer();
 
     n.SetUnityWeights();
 
-    Vs::IOVector input(image_pixels);
+    Ml::IOVector input(image_pixels);
     input.fill(10);
-    Vs::IOVector expected_out(10);
+    Ml::IOVector expected_out(10);
     expected_out.fill(0);
     expected_out(1) = 1;
 
-    n.WeightGradient(input, expected_out, Vs::LogLossObjective);
+    n.WeightGradient(input, expected_out, Ml::LogLossObjective);
 }
 
 template <typename T>
@@ -282,8 +282,8 @@ void AssertVecEqual(std::vector<T> actual, std::vector<T> expected) {
 }
 
 TEST(Network, GetIncomingNodesFor) {
-    Vs::Network n(10);                      // Input layer is 0-9
-    n.AddFullyConnectedLayer(2, Vs::ReLu);  // Nodes 10 and 11
+    Ml::Network n(10);                      // Input layer is 0-9
+    n.AddFullyConnectedLayer(2, Ml::ReLu);  // Nodes 10 and 11
     n.AddSoftMaxLayer();                    // Nodes 12 and 13
 
     std::vector<size_t> node_0_to_9_incoming = {};
@@ -301,8 +301,8 @@ TEST(Network, GetIncomingNodesFor) {
 }
 
 TEST(Network, GetOutgoingNodesFor) {
-    Vs::Network n(10);                      // input layer is 0-9
-    n.AddFullyConnectedLayer(2, Vs::ReLu);  // nodes 10 and 11
+    Ml::Network n(10);                      // input layer is 0-9
+    n.AddFullyConnectedLayer(2, Ml::ReLu);  // nodes 10 and 11
     n.AddSoftMaxLayer();                    // nodes 12 and 13
 
     std::vector<size_t> node_0_to_9_outgoing = {10, 11};
@@ -320,23 +320,23 @@ TEST(Network, GetOutgoingNodesFor) {
 }
 
 TEST(Network, AnalyticAndNumericalGradientsMatchSimple) {
-    auto np = std::make_shared<Vs::Network>(1);
-    np->AddFullyConnectedLayer(3, Vs::Sigmoid);
-    np->AddFullyConnectedLayer(4, Vs::Sigmoid);
-    np->AddFullyConnectedLayer(2, Vs::Sigmoid);
+    auto np = std::make_shared<Ml::Network>(1);
+    np->AddFullyConnectedLayer(3, Ml::Sigmoid);
+    np->AddFullyConnectedLayer(4, Ml::Sigmoid);
+    np->AddFullyConnectedLayer(2, Ml::Sigmoid);
 
-    Vs::IOVector input(1);
+    Ml::IOVector input(1);
     input << 1.1;
-    Vs::IOVector output(2);
+    Ml::IOVector output(2);
     output << 0, 0;
-    auto objective_fn = Vs::SumOfSquaresObjective;
+    auto objective_fn = Ml::SumOfSquaresObjective;
     double param_step_size = 0.00001;
 
-    Vs::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
-    Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
+    Ml::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
+    Ml::IOVector numerical_gradient = Ml::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
-    std::cout << std::endl << "Top 10 Differences Of Analytic Vs Numerical" << std::endl;
-    Vs::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
+    std::cout << std::endl << "Top 10 Differences Of Analytic Ml Numerical" << std::endl;
+    Ml::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
         std::stringstream ss;
         np->DescribeParamIdx(ss, row);
         return ss.str();
@@ -346,30 +346,30 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSimple) {
 }
 
 TEST(Network, AnalyticAndNumericalGradientsMatchBig) {
-    auto np = std::make_shared<Vs::Network>(10);
-    np->AddFullyConnectedLayer(25, Vs::ReLu);
-    np->AddFullyConnectedLayer(10, Vs::ReLu);
+    auto np = std::make_shared<Ml::Network>(10);
+    np->AddFullyConnectedLayer(25, Ml::ReLu);
+    np->AddFullyConnectedLayer(10, Ml::ReLu);
 
     auto norm_dist_vec = [](size_t dim) {
-        Vs::IOVector vec(dim);
+        Ml::IOVector vec(dim);
         for (size_t idx = 0; idx < dim; idx++) {
-            vec(idx) = Vs::Util::RandInGaussian(0.0, 1.0);
+            vec(idx) = Ml::Util::RandInGaussian(0.0, 1.0);
         }
 
         return vec;
     };
 
-    Vs::IOVector input = norm_dist_vec(10);
-    Vs::IOVector output(10);
+    Ml::IOVector input = norm_dist_vec(10);
+    Ml::IOVector output(10);
     output << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-    auto objective_fn = Vs::SumOfSquaresObjective;
+    auto objective_fn = Ml::SumOfSquaresObjective;
     double param_step_size = 0.00001;
 
-    Vs::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
-    Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
+    Ml::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
+    Ml::IOVector numerical_gradient = Ml::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
-    std::cout << std::endl << "Top 10 Differences Of Analytic Vs Numerical" << std::endl;
-    Vs::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
+    std::cout << std::endl << "Top 10 Differences Of Analytic Ml Numerical" << std::endl;
+    Ml::Util::TopTenDifferences(std::cout, analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
         std::stringstream ss;
         np->DescribeParamIdx(ss, row);
         return ss.str();
@@ -379,31 +379,31 @@ TEST(Network, AnalyticAndNumericalGradientsMatchBig) {
 }
 
 TEST(Network, AnalyticAndNumericalGradientsMatchSoftmaxAndLogLoss) {
-    auto np = std::make_shared<Vs::Network>(5);
-    np->AddFullyConnectedLayer(5, Vs::ReLu);
+    auto np = std::make_shared<Ml::Network>(5);
+    np->AddFullyConnectedLayer(5, Ml::ReLu);
     auto softmax_layer_idx = np->AddSoftMaxLayer();
     // np->SetAllWeightsTo(0.15);
 
     auto norm_dist_vec = [](size_t dim) {
-        Vs::IOVector vec(dim);
+        Ml::IOVector vec(dim);
         for (size_t idx = 0; idx < dim; idx++) {
-            vec(idx) = Vs::Util::RandInGaussian(0.0, 1.0);
+            vec(idx) = Ml::Util::RandInGaussian(0.0, 1.0);
         }
 
         return vec;
     };
 
-    Vs::IOVector input = norm_dist_vec(5);  // ; input << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
-    Vs::IOVector output(5);
+    Ml::IOVector input = norm_dist_vec(5);  // ; input << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+    Ml::IOVector output(5);
     output << 1, 0, 0, 0, 0;  // 0, 0, 0, 0, 0;
-    auto objective_fn = Vs::LogLossObjective;
+    auto objective_fn = Ml::LogLossObjective;
     double param_step_size = 0.00001;
 
-    Vs::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
-    Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
+    Ml::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
+    Ml::IOVector numerical_gradient = Ml::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
     std::cout << std::endl << "Softmax(ReLu) layer differences:" << std::endl;
-    Vs::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1),
+    Ml::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1),
                                      analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
                                          std::stringstream ss;
                                          np->DescribeParamIdx(ss, row);
@@ -413,31 +413,31 @@ TEST(Network, AnalyticAndNumericalGradientsMatchSoftmaxAndLogLoss) {
 }
 
 TEST(Network, AnalyticAndNumericalGradientsMatchSimpleSoftMax) {
-    auto np = std::make_shared<Vs::Network>(2);
-    np->AddFullyConnectedLayer(2, Vs::ReLu);
+    auto np = std::make_shared<Ml::Network>(2);
+    np->AddFullyConnectedLayer(2, Ml::ReLu);
     auto softmax_layer_idx = np->AddSoftMaxLayer();
     // np->SetAllWeightsTo(0.15);
 
     auto norm_dist_vec = [](size_t dim) {
-        Vs::IOVector vec(dim);
+        Ml::IOVector vec(dim);
         for (size_t idx = 0; idx < dim; idx++) {
-            vec(idx) = Vs::Util::RandInGaussian(0.0, 1.0);
+            vec(idx) = Ml::Util::RandInGaussian(0.0, 1.0);
         }
 
         return vec;
     };
 
-    Vs::IOVector input = norm_dist_vec(2);
-    Vs::IOVector output(2);
+    Ml::IOVector input = norm_dist_vec(2);
+    Ml::IOVector output(2);
     output << 1, 0;
-    auto objective_fn = Vs::SumOfSquaresObjective;
+    auto objective_fn = Ml::SumOfSquaresObjective;
     double param_step_size = 0.00001;
 
-    Vs::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
-    Vs::IOVector numerical_gradient = Vs::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
+    Ml::IOVector analytic_gradient = np->WeightGradient(input, output, objective_fn);
+    Ml::IOVector numerical_gradient = Ml::CalculateNumericalGradient(np, input, output, objective_fn, param_step_size);
 
     std::cout << std::endl << "Softmax(ReLu) layer differences:" << std::endl;
-    Vs::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1),
+    Ml::Util::DifferencesForIndicies(std::cout, np->ParamIndiciesForLayerWeights(softmax_layer_idx - 1),
                                      analytic_gradient, numerical_gradient, [&np](size_t row, size_t col) {
                                          std::stringstream ss;
                                          np->DescribeParamIdx(ss, row);

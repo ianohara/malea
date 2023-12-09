@@ -7,7 +7,7 @@
 #include "Eigen/Core"
 #include "network.hpp"
 
-namespace Vs {
+namespace Ml {
 typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> EigenImage;
 
 class MNISTLoader {
@@ -57,10 +57,10 @@ class MNISTLoader {
 };
 
 namespace MNIST {
-std::shared_ptr<Vs::Network> Network(size_t pixels_per_image);
-std::shared_ptr<Vs::Network> MiniNetwork(size_t pixels_per_image);
-Vs::IOVector GetOneHotVector(size_t label);
-Vs::IOVector ImageToNormalizedInput(Vs::EigenImage image, double dataset_mean, double dataset_std);
+std::shared_ptr<Ml::Network> Network(size_t pixels_per_image);
+std::shared_ptr<Ml::Network> MiniNetwork(size_t pixels_per_image);
+Ml::IOVector GetOneHotVector(size_t label);
+Ml::IOVector ImageToNormalizedInput(Ml::EigenImage image, double dataset_mean, double dataset_std);
 }  // namespace MNIST
-}  // namespace Vs
+}  // namespace Ml
 #endif /* MNIST_HPP */

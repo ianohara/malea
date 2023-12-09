@@ -5,7 +5,7 @@
 #include "Eigen/Core"
 #include "cxxopts.hpp"
 
-namespace Vs {
+namespace Ml {
         ParamVector AdamOptimizer::Step(const ParamVector& current_params, const ParamVector& current_gradient) {
         _steps++;
 
@@ -41,4 +41,4 @@ namespace Vs {
         _second_moment.setConstant(0);
         _second_moment_bias_corrected.setConstant(0);
     }
-}
+} // namespace Ml

@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace Vs {
+namespace Ml {
 size_t Network::AddLayer(size_t nodes, std::shared_ptr<ActivationFunction> fn) {
     // NOTE(imo): This assert is just a protection against using this in the
     // constructor for layer 0 at some point in the future.  Biases would be
@@ -46,7 +46,7 @@ size_t Network::AddFullyConnectedLayer(size_t nodes, std::shared_ptr<ActivationF
 
 size_t Network::AddSoftMaxLayer() {
     auto [from_start, from_end] = layer_nodes.back();
-    const size_t new_layer_idx = AddLayer(from_end - from_start + 1, Vs::SoftMax);
+    const size_t new_layer_idx = AddLayer(from_end - from_start + 1, Ml::SoftMax);
     DeleteBias(new_layer_idx);
     auto [to_start, to_end] = layer_nodes.back();
 
@@ -68,7 +68,7 @@ void Network::HeInitialize(size_t layer_idx) {
         const double incoming_count = GetIncomingNodesFor(node_idx).size();
         for (size_t incoming_idx : GetIncomingNodesFor(node_idx)) {
             double standard_dev = std::sqrt(2.0 / incoming_count);
-            SetWeightForConnection(incoming_idx, node_idx, Vs::Util::RandInGaussian(0.0, standard_dev));
+            SetWeightForConnection(incoming_idx, node_idx, Ml::Util::RandInGaussian(0.0, standard_dev));
         }
     }
 }
@@ -105,7 +105,7 @@ FVal Network::ApplyNode(size_t node_idx, const IOVector &node_values) {
     auto layer_node_idx = GlobalNodeToLayerNode(node_idx);
     auto fn = activation_functions[layer_idx];
     auto apply_value = fn->Apply(layer_node_idx, node_values);
-    if (Vs::Debug) {
+    if (Ml::Debug) {
         std::cout << "Applying Node " << node_idx << ":" << std::endl
                   << "  layer=" << layer_idx << std::endl
                   << "  global=" << node_idx << "(layer_node=" << layer_node_idx << ")" << std::endl
@@ -271,28 +271,28 @@ GradVector Network::WeightGradient(const IOVector& input, const IOVector& expect
     return gradient;
 }
 
-Vs::GradVector CalculateNumericalGradient(const std::shared_ptr<Vs::Network> network, const Vs::IOVector &input,
-                                          const Vs::IOVector &expected_output,
-                                          const std::shared_ptr<Vs::ObjectiveFunction> objective_fn,
+Ml::GradVector CalculateNumericalGradient(const std::shared_ptr<Ml::Network> network, const Ml::IOVector &input,
+                                          const Ml::IOVector &expected_output,
+                                          const std::shared_ptr<Ml::ObjectiveFunction> objective_fn,
                                           const double param_step_size) {
     assert(param_step_size > 0);
-    const Vs::IOVector starting_params = network->GetOptimizedParams();
+    const Ml::IOVector starting_params = network->GetOptimizedParams();
     // For each parameter dimension, the change in objective function associated with a small step of param_step_size in
     // that dimension.  The step is done centered on the current location. Aka: -param_step_size/2 to param_step_size/2
-    Vs::IOVector param_delta(starting_params.size());
+    Ml::IOVector param_delta(starting_params.size());
 
     auto set_one_coeff = [&starting_params](size_t coeff_idx, double val) {
-        Vs::IOVector zeros_except_one(starting_params.size());
+        Ml::IOVector zeros_except_one(starting_params.size());
         zeros_except_one.fill(0);
         zeros_except_one(coeff_idx) = val;
 
-        Vs::IOVector result = starting_params + zeros_except_one;
+        Ml::IOVector result = starting_params + zeros_except_one;
         return result;
     };
 
     for (ssize_t dim_idx = 0; dim_idx < starting_params.rows(); dim_idx++) {
-        const Vs::IOVector from_params = set_one_coeff(dim_idx, -param_step_size);
-        const Vs::IOVector to_params = set_one_coeff(dim_idx, param_step_size);
+        const Ml::IOVector from_params = set_one_coeff(dim_idx, -param_step_size);
+        const Ml::IOVector to_params = set_one_coeff(dim_idx, param_step_size);
 
         network->SetOptimizedParams(from_params);
         const double from_obj_val =
@@ -676,4 +676,4 @@ void Network::SetWeightsWith(std::function<WVal(size_t, size_t)> weight_setter) 
 
         return ids;
     }
-}  // namespace Vs
+}  // namespace Ml

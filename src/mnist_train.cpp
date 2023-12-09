@@ -32,7 +32,7 @@ int main(int arg_count, char** args) {
     }
 
     std::cout << "Loading MNIST training data...";
-    Vs::MNISTLoader mnist_training_data(result["labels"].as<std::string>(), result["images"].as<std::string>());
+    Ml::MNISTLoader mnist_training_data(result["labels"].as<std::string>(), result["images"].as<std::string>());
     std::cout << "loaded " << mnist_training_data.Count() << " training images." << std::endl;
 
     const double mnist_std_dev = mnist_training_data.GetStd();
@@ -42,8 +42,8 @@ int main(int arg_count, char** args) {
     std::cout << "  MNIST mean          : " << mnist_mean << std::endl;
 
     std::cout << "Building MNIST Network..." << std::endl;
-    auto mnist_network = result["mini"].as<bool>() ? Vs::MNIST::MiniNetwork(mnist_training_data.GetPixelsPerImage())
-                                                   : Vs::MNIST::Network(mnist_training_data.GetPixelsPerImage());
+    auto mnist_network = result["mini"].as<bool>() ? Ml::MNIST::MiniNetwork(mnist_training_data.GetPixelsPerImage())
+                                                   : Ml::MNIST::Network(mnist_training_data.GetPixelsPerImage());
 
     if (result.count("load")) {
         const std::string in_file = result["load"].as<std::string>();
@@ -51,21 +51,21 @@ int main(int arg_count, char** args) {
         mnist_network->DeserializeFrom(in_file);
     }
 
-    Vs::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"),
+    Ml::AdamOptimizer optimizer(dbl_opt("step_size"), dbl_opt("beta_1"), dbl_opt("beta_2"), dbl_opt("epsilon"),
                                 mnist_network->GetOptimizedParamsCount());
 
     const size_t batch_size = result["batch_size"].as<size_t>();
     const size_t training_count = mnist_training_data.Count();
     const size_t stop_after_n_samples = result["stop_at"].as<size_t>();
 
-    Vs::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
+    Ml::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
     current_params << mnist_network->GetOptimizedParams();
 
     size_t count_in_batch = 0;
-    Vs::FVal batch_error = 0;
-    Vs::GradVector batch_gradient(current_params.rows());
+    Ml::FVal batch_error = 0;
+    Ml::GradVector batch_gradient(current_params.rows());
     batch_gradient.fill(0);
-    auto objective_fn = Vs::LogLossObjective;
+    auto objective_fn = Ml::LogLossObjective;
     for (size_t training_idx = 0; training_idx < training_count; training_idx++) {
         if (stop_after_n_samples && training_idx > stop_after_n_samples) {
             std::cout << "Trained against " << training_idx << " samples, stopping at user's request (--stop_at=" << stop_after_n_samples << ")" << std::endl;
@@ -75,11 +75,11 @@ int main(int arg_count, char** args) {
         auto [this_label, this_image] = mnist_training_data.GetSample(training_idx);
 
         // std::cout << "  Getting one hot vector..." << std::endl;
-        auto this_one_hot = Vs::MNIST::GetOneHotVector(this_label);
+        auto this_one_hot = Ml::MNIST::GetOneHotVector(this_label);
         // std::cout << "  Getting image in input format..." << std::endl;
-        auto this_image_input_format = Vs::MNIST::ImageToNormalizedInput(this_image, mnist_mean, mnist_std_dev);
+        auto this_image_input_format = Ml::MNIST::ImageToNormalizedInput(this_image, mnist_mean, mnist_std_dev);
         // std::cout << "  Calculating gradient..." << std::endl;
-        Vs::GradVector sample_gradient =
+        Ml::GradVector sample_gradient =
             mnist_network->WeightGradient(this_image_input_format, this_one_hot, objective_fn);
         // std::cout << "  sample_gradient norm is " << sample_gradient.norm() << std::endl;
         batch_gradient += sample_gradient;
@@ -96,7 +96,7 @@ int main(int arg_count, char** args) {
                       << "      " << prediction_vector.transpose() << std::endl;
 
             // std::cout << "    Averaging gradient..." << std::endl;
-            batch_gradient /= static_cast<Vs::FVal>(count_in_batch);
+            batch_gradient /= static_cast<Ml::FVal>(count_in_batch);
             // std::cout << "    batch gradient norm is=" << batch_gradient.norm() << std::endl;
             mnist_network->SummarizeNonZeroParams(std::cout);
             // mnist_network->SummarizeParamGradient(std::cout, batch_gradient);

@@ -1,6 +1,6 @@
 #include "network_functions.hpp"
 
-namespace Vs {
+namespace Ml {
     FVal _ReLuImpl::Apply(size_t node_idx, const IOVector& node_inputs) {
         return node_inputs(node_idx) <= 0.0 ? 0.0 : node_inputs(node_idx);
     }
@@ -118,7 +118,7 @@ namespace Vs {
     std::string _SumOfSquares::Describe() { return "SumOfSquaresObjective"; }
 
     FVal _LogLoss::Apply(IOVector final_layer_output, IOVector expected_output) {
-        if (Vs::Debug) {
+        if (Ml::Debug) {
             // For log loss, the expected output should be a "one hot" vector (1 entry is 1.0, all others 0.0) so
             // exact comparisons work below.
             assert(expected_output.nonZeros() == 1);
@@ -138,4 +138,4 @@ namespace Vs {
 
     std::string _LogLoss::Describe() { return "LogLossObjective"; }
 
-} // namespace Vs
+} // namespace Ml

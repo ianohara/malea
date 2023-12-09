@@ -24,7 +24,7 @@ int main(int arg_count, char** args) {
     }
 
     std::cout << "Loading MNIST test data...";
-    Vs::MNISTLoader mnist_data(result["labels"].as<std::string>(), result["images"].as<std::string>());
+    Ml::MNISTLoader mnist_data(result["labels"].as<std::string>(), result["images"].as<std::string>());
     std::cout << "loaded " << mnist_data.Count() << " test images." << std::endl;
 
     const double mnist_std_dev = mnist_data.GetStd();
@@ -34,8 +34,8 @@ int main(int arg_count, char** args) {
     std::cout << "  MNIST mean          : " << mnist_mean << std::endl;
 
     std::cout << "Building MNIST Network..." << std::endl;
-    auto mnist_network = result["mini"].as<bool>() ? Vs::MNIST::MiniNetwork(mnist_data.GetPixelsPerImage())
-                                                   : Vs::MNIST::Network(mnist_data.GetPixelsPerImage());
+    auto mnist_network = result["mini"].as<bool>() ? Ml::MNIST::MiniNetwork(mnist_data.GetPixelsPerImage())
+                                                   : Ml::MNIST::Network(mnist_data.GetPixelsPerImage());
 
     if (result.count("load")) {
         const std::string in_file = result["load"].as<std::string>();
@@ -48,12 +48,12 @@ int main(int arg_count, char** args) {
     const size_t sample_count = mnist_data.Count();
     const size_t test_count = result["count"].as<size_t>();
 
-    Vs::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
+    Ml::ParamVector current_params(mnist_network->GetOptimizedParamsCount());
     current_params << mnist_network->GetOptimizedParams();
 
-    Vs::GradVector batch_gradient(current_params.rows());
+    Ml::GradVector batch_gradient(current_params.rows());
     batch_gradient.fill(0);
-    auto objective_fn = Vs::LogLossObjective;
+    auto objective_fn = Ml::LogLossObjective;
     std::vector<bool> correct_classificiations;
 
     for (size_t training_idx = 0; training_idx < sample_count; training_idx++) {
@@ -66,9 +66,9 @@ int main(int arg_count, char** args) {
         auto [this_label, this_image] = mnist_data.GetSample(training_idx);
 
         // std::cout << "  Getting one hot vector..." << std::endl;
-        auto this_one_hot = Vs::MNIST::GetOneHotVector(this_label);
+        auto this_one_hot = Ml::MNIST::GetOneHotVector(this_label);
         // std::cout << "  Getting image in input format..." << std::endl;
-        auto this_image_input_format = Vs::MNIST::ImageToNormalizedInput(this_image, mnist_mean, mnist_std_dev);
+        auto this_image_input_format = Ml::MNIST::ImageToNormalizedInput(this_image, mnist_mean, mnist_std_dev);
 
         // TODO(imo): Make gradient return apply too so we don't need to double do this...
         auto this_full_node_output = mnist_network->Apply(this_image_input_format);

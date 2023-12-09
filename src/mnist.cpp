@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace Vs {
+namespace Ml {
 // Load the labels file into the internal labels (0-9 values only) vector.
 //
 // The layout of the data is taken from: https://www.kaggle.com/code/hojjatk/read-mnist-dataset/notebook
@@ -139,36 +139,36 @@ double MNISTLoader::CalculateStd(std::vector<EigenImage> images) {
 }
 
 namespace MNIST {
-std::shared_ptr<Vs::Network> Network(size_t pixels_per_image) {
-    auto network = std::make_shared<Vs::Network>(pixels_per_image);
-    network->AddFullyConnectedLayer(100, Vs::ReLu);
-    network->AddFullyConnectedLayer(100, Vs::ReLu);
-    network->AddFullyConnectedLayer(10, Vs::ReLu);
+std::shared_ptr<Ml::Network> Network(size_t pixels_per_image) {
+    auto network = std::make_shared<Ml::Network>(pixels_per_image);
+    network->AddFullyConnectedLayer(100, Ml::ReLu);
+    network->AddFullyConnectedLayer(100, Ml::ReLu);
+    network->AddFullyConnectedLayer(10, Ml::ReLu);
     network->AddSoftMaxLayer();
 
     return network;
 }
 
-std::shared_ptr<Vs::Network> MiniNetwork(size_t pixels_per_image) {
-    auto network = std::make_shared<Vs::Network>(pixels_per_image);
-    network->AddFullyConnectedLayer(10, Vs::ReLu);
+std::shared_ptr<Ml::Network> MiniNetwork(size_t pixels_per_image) {
+    auto network = std::make_shared<Ml::Network>(pixels_per_image);
+    network->AddFullyConnectedLayer(10, Ml::ReLu);
     network->AddSoftMaxLayer();
 
     return network;
 }
 
-Vs::IOVector GetOneHotVector(size_t label) {
-    Vs::IOVector one_hot(10);
+Ml::IOVector GetOneHotVector(size_t label) {
+    Ml::IOVector one_hot(10);
     one_hot.fill(0);
     one_hot(label) = 1;
 
     return one_hot;
 }
 
-Vs::IOVector ImageToNormalizedInput(Vs::EigenImage image, double dataset_mean, double dataset_std) {
-    auto column_w_fval = image.reshaped(Eigen::AutoSize, 1).cast<Vs::FVal>();
+Ml::IOVector ImageToNormalizedInput(Ml::EigenImage image, double dataset_mean, double dataset_std) {
+    auto column_w_fval = image.reshaped(Eigen::AutoSize, 1).cast<Ml::FVal>();
     return ((column_w_fval.array() - dataset_mean) / dataset_std);
 }
 }  // namespace MNIST
 
-}  // namespace Vs
+}  // namespace Ml

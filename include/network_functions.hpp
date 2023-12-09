@@ -6,7 +6,7 @@
 
 #include "util.hpp"
 
-namespace Vs {
+namespace Ml {
 class ActivationFunction {
    public:
     virtual FVal Apply(size_t node_idx, const IOVector& node_inputs) = 0;
@@ -82,5 +82,5 @@ static auto PassThrough = std::make_shared<_PassThroughImpl>();
 static auto ArgCubed = std::make_shared<_ArgCubedImpl>();  // Used for testing
 static auto SoftMax = std::make_shared<_SoftMaxImpl>();
 static auto Sigmoid = std::make_shared<_SigmoidImpl>();
-}  // namespace Vs
+}  // namespace Ml
 #endif /* NETWORK_FUNCTIONS_HPP */

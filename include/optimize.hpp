@@ -5,7 +5,7 @@
 
 #include "Eigen/Core"
 
-namespace Vs {
+namespace Ml {
 typedef double ParamType;
 typedef Eigen::Matrix<ParamType, Eigen::Dynamic, 1> ParamVector;
 
@@ -45,5 +45,5 @@ class AdamOptimizer {
     size_t _steps;
     ParamVector _last_params;
 };
-}  // namespace Vs
+}  // namespace Ml
 #endif

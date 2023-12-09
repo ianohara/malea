@@ -5,6 +5,6 @@
 
 #include "Eigen/Core"
 
-namespace Vs {
+namespace Ml {
 namespace Util {}
-}  // namespace Vs
+}  // namespace Ml

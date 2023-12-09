@@ -12,17 +12,17 @@
 #include "network_functions.hpp"
 #include "util.hpp"
 
-namespace Vs {
+namespace Ml {
 class Network {
    public:
-    Network(size_t input_size) : layer_nodes{std::make_pair(0, input_size - 1)}, activation_functions{Vs::PassThrough} {
+    Network(size_t input_size) : layer_nodes{std::make_pair(0, input_size - 1)}, activation_functions{Ml::PassThrough} {
         ResizeForNodeCount(0, input_size);
     }
 
-    size_t AddLayer(size_t nodes, std::shared_ptr<Vs::ActivationFunction> fn);
+    size_t AddLayer(size_t nodes, std::shared_ptr<Ml::ActivationFunction> fn);
 
     // Adds a layer that is fully connected to the previously added layer.
-    size_t AddFullyConnectedLayer(size_t nodes, std::shared_ptr<Vs::ActivationFunction> fn);
+    size_t AddFullyConnectedLayer(size_t nodes, std::shared_ptr<Ml::ActivationFunction> fn);
 
     size_t AddSoftMaxLayer();
 
@@ -101,7 +101,7 @@ class Network {
 
     IOVector Apply(IOVector input);
 
-    GradVector WeightGradient(const IOVector& input, const IOVector& output, std::shared_ptr<Vs::ObjectiveFunction> objective_fn);
+    GradVector WeightGradient(const IOVector& input, const IOVector& output, std::shared_ptr<Ml::ObjectiveFunction> objective_fn);
 
     inline void SetAllWeightsTo(WVal weight) {
         auto a_constant = [weight](size_t row, size_t col) { return weight; };
@@ -199,12 +199,12 @@ class Network {
     std::vector<std::pair<size_t, size_t>> layer_nodes;
 
     // For each layer, the activation function used for its nodes.
-    std::vector<std::shared_ptr<Vs::ActivationFunction>> activation_functions;
+    std::vector<std::shared_ptr<Ml::ActivationFunction>> activation_functions;
 
     // Each layer has a constant bias that is added to its node's inputs.
     //
     // NOTE(imo): layer 0 does not have a bias, and some layers like softmax do not either.
-    std::map<size_t, Vs::FVal> biases;
+    std::map<size_t, Ml::FVal> biases;
 
     // The scratch pad for keeping track of the forward evaluation values of nodes.  This is only
     // valid for a particular input vector, and really shouldn't be used outside of Apply and
@@ -266,10 +266,10 @@ class Network {
     void EnsureTempSizes();
 };
 
-Vs::GradVector CalculateNumericalGradient(const std::shared_ptr<Vs::Network> network, const Vs::IOVector &input,
-                                          const Vs::IOVector &expected_output,
-                                          const std::shared_ptr<Vs::ObjectiveFunction> objective_fn,
+Ml::GradVector CalculateNumericalGradient(const std::shared_ptr<Ml::Network> network, const Ml::IOVector &input,
+                                          const Ml::IOVector &expected_output,
+                                          const std::shared_ptr<Ml::ObjectiveFunction> objective_fn,
                                           const double param_step_size);
-}  // namespace Vs
+}  // namespace Ml
 
 #endif

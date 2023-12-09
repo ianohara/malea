@@ -6,7 +6,7 @@
 
 #include "Eigen/Core"
 
-namespace Vs {
+namespace Ml {
 static constexpr bool Debug = false;
 
 typedef double FVal;
@@ -15,9 +15,9 @@ typedef double WVal;
 
 typedef Eigen::Matrix<FVal, Eigen::Dynamic, 1> IOVector;
 typedef Eigen::Matrix<BVal, Eigen::Dynamic, 1> GradVector;
-}  // namespace Vs
+}  // namespace Ml
 
-namespace Vs {
+namespace Ml {
 namespace Util {
 static std::mutex rand_in_range;
 
@@ -120,5 +120,5 @@ void DifferencesForIndicies(std::ostream &os, const std::vector<size_t> &indicie
     }
 }
 }  // namespace Util
-}  // namespace Vs
+}  // namespace Ml
 #endif /* UTIL_HPP */
