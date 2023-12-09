@@ -44,7 +44,7 @@ endif(ML_PROFILE)
 
 add_subdirectory("third-party")
 
-set(ML_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include")
+set(ML_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 add_library(ml_util src/util.cpp)
 target_include_directories(ml_util PRIVATE ${ML_INCLUDE_DIRECTORIES})
